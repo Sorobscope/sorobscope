@@ -1,0 +1,7 @@
+/target
+
+# The fixture contract is a separate crate with its own build output.
+fixtures/*/target/
+
+# Cargo.lock IS committed — this is a binary crate, where the convention is to
+# commit it so builds are reproducible. Do not add it here.
