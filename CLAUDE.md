@@ -15,7 +15,19 @@ This started as a mobile reputation-tracking app idea, but moved to a **Dev Tool
 
 ## Current status
 
-**Phase 0 complete — Phase 1 (RPC client foundation) is next.** Read `docs/ROADMAP.md` next. Update this section as phases complete.
+**Phase 1 complete — Phase 2 (`events` command) is next.** Read `docs/ROADMAP.md` next. Update this section as phases complete.
+
+Phase 1 built `src/network.rs` (`Connection::open` — the one place a `Server` is
+constructed) and `src/error.rs` (`RpcFailure` — translates client errors into distinct
+messages for unreachable / rejected / undecodable). `--network` and `--rpc-url` are live.
+Commands still print `not implemented`, but each one now opens a real connection first, so
+the error paths are exercised rather than theoretical.
+
+One finding worth carrying forward: **mainnet has no default RPC URL and that is
+deliberate.** The SDF runs public RPC for the test networks only; there is no free public
+mainnet endpoint to fall back on, so `--network mainnet` errors and tells the user to
+supply `--rpc-url`. Inventing a plausible-looking default would produce a confusing
+connection failure instead of a clear one.
 
 Resolved dependency versions (Phase 0): `clap` 4.6.6, `tokio` 1.53.1, `soroban-client` 0.5.9,
 `serde_json` 1.0.151, `anyhow` 1.0.104. `soroban-client` 0.5.9's real API is

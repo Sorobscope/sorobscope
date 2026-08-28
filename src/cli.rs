@@ -1,4 +1,6 @@
-use clap::{Parser, Subcommand, ValueEnum};
+use clap::{Parser, Subcommand};
+
+use crate::network::Network;
 
 #[derive(Parser)]
 #[command(
@@ -25,13 +27,6 @@ pub struct Cli {
 
     #[command(subcommand)]
     pub command: Commands,
-}
-
-#[derive(ValueEnum, Clone, Copy, Debug, PartialEq, Eq)]
-pub enum Network {
-    Testnet,
-    Futurenet,
-    Mainnet,
 }
 
 #[derive(Subcommand)]

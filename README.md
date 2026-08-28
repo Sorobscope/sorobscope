@@ -8,10 +8,11 @@ Readable output by default, `--json` on every command for piping into other tool
 
 > ### Status: scaffolding — commands are not implemented yet
 >
-> Phase 0 of [`docs/ROADMAP.md`](docs/ROADMAP.md) is complete: the CLI parses, the RPC
-> client reaches real testnet, and there's a deployed contract to test against. But
-> `events`, `entry`, and `tx` currently print `not implemented`. The decoding — which is
-> the actual product — lands in Phases 2–4.
+> Phases 0–1 of [`docs/ROADMAP.md`](docs/ROADMAP.md) are complete: the CLI parses,
+> `--network` and `--rpc-url` work, the RPC client reaches real testnet, failures report
+> themselves clearly, and there's a deployed contract to test against. But `events`,
+> `entry`, and `tx` currently print `not implemented`. The decoding — which is the actual
+> product — lands in Phases 2–4.
 >
 > The examples below are the intended interface, **not** working transcripts. Real
 > terminal output replaces them in Phase 7.

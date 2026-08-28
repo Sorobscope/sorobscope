@@ -6,9 +6,10 @@ This is a spec and reference skeleton, not final code. `soroban-client` is a you
 
 ```
 src/
-├── main.rs              // entry point: parse Cli, dispatch to a command module
+├── main.rs              // entry point: parse Cli, open a Connection, dispatch to a command module
 ├── cli.rs                // Cli / Commands enum (clap derive)
-├── network.rs            // testnet/futurenet/mainnet RPC URLs + passphrases, --rpc-url override, builds a configured Server
+├── network.rs            // Network enum, testnet/futurenet/mainnet RPC URLs + passphrases, --rpc-url override, builds a configured Server
+├── error.rs              // RpcFailure: translates soroban-client errors into distinct, actionable messages
 ├── decode.rs             // ScVal -> readable String, and ScVal -> serde_json::Value (twin functions, one file)
 └── commands/
     ├── mod.rs
@@ -20,6 +21,13 @@ tests/
 ```
 
 ## CLI shape
+
+> Two changes from this sketch as built in Phase 1: `Network` lives in `network.rs`
+> rather than `cli.rs`, so the enum sits with the URLs and passphrases it selects; and
+> `error.rs` was added, because translating client errors into the three distinct messages
+> the roadmap asks for is real logic that belongs somewhere other than `network.rs`.
+> `Commands` also carries per-variant `long_about` text stating the RPC's limits — see
+> ground rule 3 in `CLAUDE.md`.
 
 ```rust
 use clap::{Parser, Subcommand, ValueEnum};
