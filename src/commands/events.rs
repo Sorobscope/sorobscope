@@ -9,6 +9,7 @@ use soroban_client::soroban_rpc::EventType;
 
 use crate::decode::{guard, scval_to_json, scval_to_readable};
 use crate::outcome::Outcome;
+use crate::style;
 use crate::network::Connection;
 
 /// How far back to look when `--since-ledger` isn't given. Ledgers close about every 5
@@ -40,14 +41,20 @@ pub async fn run(
     let start = since_ledger.unwrap_or_else(|| latest.saturating_sub(DEFAULT_LOOKBACK_LEDGERS));
 
     if !json {
-        println!("events for {contract_id} on {}", connection.network.name());
-        match since_ledger {
-            Some(l) => println!("searching from ledger {l} to {latest}\n"),
-            None => println!(
-                "searching from ledger {start} to {latest} (last ~{} ledgers; pass --since-ledger to widen)\n",
-                DEFAULT_LOOKBACK_LEDGERS
+        println!(
+            "{}",
+            style::heading(&format!(
+                "events for {contract_id} on {}",
+                connection.network.name()
+            ))
+        );
+        let range = match since_ledger {
+            Some(l) => format!("searching from ledger {l} to {latest}"),
+            None => format!(
+                "searching from ledger {start} to {latest} (last ~{DEFAULT_LOOKBACK_LEDGERS} ledgers; pass --since-ledger to widen)"
             ),
-        }
+        };
+        println!("{}\n", style::muted(&range));
     }
 
     // Paging matters more than it looks. getEvents scans only a bounded slice of ledgers
@@ -125,10 +132,13 @@ pub async fn run(
     }
 
     if !json && seen == 0 {
-        println!("No events found in that range.");
+        println!("{}", style::warn("No events found in that range."));
         println!(
-            "The contract may simply not have emitted any — or the range predates what \
-             this RPC endpoint still retains."
+            "{}",
+            style::muted(
+                "The contract may simply not have emitted any — or the range predates what \
+                 this RPC endpoint still retains."
+            )
         );
     }
 
@@ -140,15 +150,24 @@ pub async fn run(
 
 fn print_event(event: &EventResponse) {
     let topics = match decode_topics(event) {
-        Some(t) => t.join(", "),
-        None => "<undecodable>".to_string(),
+        Some(t) => format!("[{}]", t.join(", ")),
+        None => style::warn("<undecodable>"),
     };
-    let data = decode_value(event).unwrap_or_else(|| "<undecodable>".to_string());
+    let data = match decode_value(event) {
+        Some(v) => v,
+        None => style::warn("<undecodable>"),
+    };
 
-    println!("ledger {}  {}", event.ledger, event.ledger_closed_at);
-    println!("  topics  [{topics}]");
-    println!("  data    {data}");
-    println!("  tx      {}", event.tx_hash);
+    println!(
+        "{}",
+        style::heading(&format!(
+            "ledger {}  {}",
+            event.ledger, event.ledger_closed_at
+        ))
+    );
+    style::field("topics", &topics);
+    style::field("data", &data);
+    style::field("tx", &event.tx_hash);
     println!();
 }
 

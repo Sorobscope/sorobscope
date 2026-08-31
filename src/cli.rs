@@ -1,6 +1,7 @@
 use clap::{Parser, Subcommand};
 
 use crate::network::Network;
+use crate::style::ColorChoice;
 
 #[derive(Parser)]
 #[command(
@@ -13,7 +14,9 @@ use crate::network::Network;
                   wallet or secret key.\n\n\
                   Exit codes: 0 the query succeeded; 2 the query succeeded but the entry \
                   or transaction does not exist; 1 something went wrong (unreachable \
-                  endpoint, rejected request, undecodable response)."
+                  endpoint, rejected request, undecodable response).\n\n\
+                  Colour is used only when writing to a terminal, and is disabled by \
+                  NO_COLOR or --color never, so piped and redirected output stays clean."
 )]
 pub struct Cli {
     /// Network to query
@@ -27,6 +30,10 @@ pub struct Cli {
     /// Emit machine-readable JSON instead of formatted text
     #[arg(long, global = true)]
     pub json: bool,
+
+    /// When to colour the output
+    #[arg(long, global = true, value_name = "WHEN", default_value = "auto")]
+    pub color: ColorChoice,
 
     #[command(subcommand)]
     pub command: Commands,

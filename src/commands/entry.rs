@@ -15,6 +15,7 @@ use soroban_client::xdr::{
 
 use crate::decode::{guard, scval_to_json, scval_to_readable};
 use crate::outcome::Outcome;
+use crate::style;
 use crate::network::Connection;
 
 /// Ledgers close about every 5 seconds. Used only to put a human-readable figure next to
@@ -155,42 +156,63 @@ fn report(
         return;
     }
 
-    println!("entry for {contract_id} on {}", connection.network.name());
-    println!("  key          {}", scval_to_readable(key));
-    println!("  durability   {}", entry.durability);
-    println!("  value        {}", scval_to_readable(&entry.value));
+    println!(
+        "{}",
+        style::heading(&format!(
+            "entry for {contract_id} on {}",
+            connection.network.name()
+        ))
+    );
+    style::field("key", &scval_to_readable(key));
+    style::field("durability", entry.durability);
+    style::field("value", &scval_to_readable(&entry.value));
 
     if let Some(seq) = entry.last_modified {
-        println!("  updated      ledger {seq}");
+        style::field("updated", &format!("ledger {seq}"));
     }
 
     // Surfacing the TTL plainly is the point of this command over raw tooling: an entry
     // that is about to expire looks identical to a healthy one unless someone does this
-    // subtraction for you.
+    // subtraction for you. Colour carries the same signal at a glance.
     match (entry.live_until, remaining) {
-        (Some(until), Some(left)) if left > 0 => println!(
-            "  live until   ledger {until}  ({left} ledgers away, ~{})",
-            approximate_duration(left as u64)
+        (Some(until), Some(left)) if left > 0 => style::field(
+            "live until",
+            &format!(
+                "ledger {until}  {}",
+                style::good(&format!(
+                    "({left} ledgers away, ~{})",
+                    approximate_duration(left as u64)
+                ))
+            ),
         ),
-        (Some(until), Some(left)) => println!(
-            "  live until   ledger {until}  (EXPIRED — {} ledgers ago; the entry may be archived)",
-            left.abs()
+        (Some(until), Some(left)) => style::field(
+            "live until",
+            &format!(
+                "ledger {until}  {}",
+                style::bad(&format!(
+                    "(EXPIRED — {} ledgers ago; the entry may be archived)",
+                    left.abs()
+                ))
+            ),
         ),
         _ => {
             if entry.durability == "instance" {
-                println!("  live until   (tied to the contract instance's own TTL)");
+                style::field("live until", "(tied to the contract instance's own TTL)");
             }
         }
     }
 
-    println!("  as of        ledger {latest}");
+    style::field("as of", &format!("ledger {latest}"));
 
     if entry.durability == "instance" {
         println!();
         println!(
-            "Found in the contract's instance storage, not as a standalone entry. Values \
-             written with env.storage().instance() live inside the contract instance and \
-             share its TTL."
+            "{}",
+            style::muted(
+                "Found in the contract's instance storage, not as a standalone entry. Values \
+                 written with env.storage().instance() live inside the contract instance and \
+                 share its TTL."
+            )
         );
     }
 }
@@ -209,12 +231,21 @@ fn report_missing(contract_id: &str, key: &ScVal, latest: u32, json: bool) {
         return;
     }
 
-    println!("No entry found for key {} on {contract_id}.", scval_to_readable(key));
+    println!(
+        "{}",
+        style::warn(&format!(
+            "No entry found for key {} on {contract_id}.",
+            scval_to_readable(key)
+        ))
+    );
     println!();
     println!(
-        "Checked persistent storage, temporary storage, and the contract's instance \
-         storage. An entry can also be missing because it expired and was archived — \
-         Soroban reclaims entries whose TTL has run out."
+        "{}",
+        style::muted(
+            "Checked persistent storage, temporary storage, and the contract's instance \
+             storage. An entry can also be missing because it expired and was archived — \
+             Soroban reclaims entries whose TTL has run out."
+        )
     );
 }
 

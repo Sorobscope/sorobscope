@@ -4,6 +4,7 @@ mod decode;
 mod error;
 mod network;
 mod outcome;
+mod style;
 
 use std::process::ExitCode;
 
@@ -17,6 +18,9 @@ use crate::outcome::Outcome;
 async fn main() -> ExitCode {
     let args = Cli::parse();
 
+    // Decided once, before anything prints.
+    style::init(args.color);
+
     match run(args).await {
         Ok(Outcome::Found) => ExitCode::SUCCESS,
         // Distinct from both success and failure: the query worked, the thing isn't there.
@@ -24,7 +28,7 @@ async fn main() -> ExitCode {
         Err(e) => {
             // Errors go to stderr so `--json` output on stdout stays pipeable even when
             // a run fails partway.
-            eprintln!("error: {e}");
+            eprintln!("{} {e}", style::error_prefix());
             ExitCode::FAILURE
         }
     }

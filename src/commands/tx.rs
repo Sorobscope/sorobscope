@@ -8,6 +8,7 @@ use soroban_client::xdr::{
 
 use crate::decode::{scval_to_json, scval_to_readable};
 use crate::outcome::Outcome;
+use crate::style;
 use crate::network::Connection;
 
 pub async fn run(connection: &Connection, hash: &str, json: bool) -> anyhow::Result<Outcome> {
@@ -117,64 +118,92 @@ fn report_readable(
     return_value: Option<ScVal>,
     events: &[ContractEvent],
 ) {
-    println!("transaction {hash} on {}", connection.network.name());
-    println!("  status     {}", status_word(&response.status));
+    println!(
+        "{}",
+        style::heading(&format!(
+            "transaction {hash} on {}",
+            connection.network.name()
+        ))
+    );
+
+    let word = status_word(&response.status);
+    let status = match response.status {
+        TransactionStatus::Success => style::good(word),
+        TransactionStatus::Failed => style::bad(word),
+        TransactionStatus::NotFound => style::warn(word),
+    };
+    style::field("status", &status);
 
     if let Some(ledger) = response.ledger {
-        println!("  ledger     {ledger}");
+        style::field("ledger", &ledger.to_string());
     }
     if let Some(created) = &response.created_at {
         match created.parse::<i64>() {
-            Ok(secs) => println!("  at         {}", iso_utc(secs)),
-            Err(_) => println!("  at         {created}"),
+            Ok(secs) => style::field("at", &iso_utc(secs)),
+            Err(_) => style::field("at", created),
         }
     }
 
     println!();
     match invocation {
         Call::Contract(call) => {
-            println!("  contract   {}", call.contract);
-            println!("  function   {}", call.function);
+            style::field("contract", &call.contract);
+            style::field("function", &call.function);
             if call.args.is_empty() {
-                println!("  args       (none)");
+                style::field("args", &style::muted("(none)"));
             } else {
                 for (i, arg) in call.args.iter().enumerate() {
-                    let label = if i == 0 { "args      " } else { "          " };
-                    println!("  {label} {}", scval_to_readable(arg));
+                    let rendered = scval_to_readable(arg);
+                    if i == 0 {
+                        style::field("args", &rendered);
+                    } else {
+                        style::field_continued(&rendered);
+                    }
                 }
             }
         }
         Call::OtherHostFunction(name) => {
-            println!("  operation  {name}");
-            println!("             (a Soroban host function, but not a contract call)");
+            style::field("operation", name);
+            style::field_continued(&style::muted(
+                "(a Soroban host function, but not a contract call)",
+            ));
         }
         Call::NonSoroban => {
-            println!("  operation  not a Soroban operation");
-            println!("             (a payment or other classic Stellar operation)");
+            style::field("operation", "not a Soroban operation");
+            style::field_continued(&style::muted(
+                "(a payment or other classic Stellar operation)",
+            ));
         }
     }
 
     if let Some(value) = &return_value {
-        println!("  returned   {}", scval_to_readable(value));
+        style::field("returned", &scval_to_readable(value));
     }
 
     println!();
     if events.is_empty() {
-        println!("  events     (none)");
+        style::field("events", &style::muted("(none)"));
     } else {
-        println!("  events ({})", events.len());
+        style::field("events", &format!("{}", events.len()));
         for event in events {
             let (topics, data) = event_parts(event);
             let rendered: Vec<String> = topics.iter().map(scval_to_readable).collect();
-            println!("    [{}]  {}", rendered.join(", "), scval_to_readable(&data));
+            style::field_continued(&format!(
+                "[{}]  {}",
+                rendered.join(", "),
+                scval_to_readable(&data)
+            ));
         }
     }
 
     if response.status == TransactionStatus::Failed {
         println!();
         println!(
-            "This transaction was included in a ledger but failed. Its effects were rolled \
-             back, so any events above describe work that did not stick."
+            "{}",
+            style::muted(
+                "This transaction was included in a ledger but failed. Its effects were rolled \
+                 back, so any events above describe work that did not stick."
+            )
         );
     }
 }
@@ -241,7 +270,10 @@ fn report_missing(hash: &str, response: &GetTransactionResponse, json: bool) {
         return;
     }
 
-    println!("Transaction {hash} was not found.");
+    println!(
+        "{}",
+        style::warn(&format!("Transaction {hash} was not found."))
+    );
     println!();
     println!(
         "This endpoint currently retains ledgers {} to {}.",
@@ -252,11 +284,14 @@ fn report_missing(hash: &str, response: &GetTransactionResponse, json: bool) {
     // identically, as NOT_FOUND. It cannot tell us which — but the retained range above
     // usually can, so state it rather than pretending to a certainty we don't have.
     println!(
-        "Soroban RPC reports both \"no such transaction\" and \"older than this endpoint \
-         retains\" the same way, so this could be either. If the transaction closed before \
-         ledger {}, it is outside the window and no longer queryable here — point --rpc-url \
-         at an endpoint with deeper history, or use an indexer.",
-        response.oldest_ledger
+        "{}",
+        style::muted(&format!(
+            "Soroban RPC reports both \"no such transaction\" and \"older than this endpoint \
+             retains\" the same way, so this could be either. If the transaction closed before \
+             ledger {}, it is outside the window and no longer queryable here — point --rpc-url \
+             at an endpoint with deeper history, or use an indexer.",
+            response.oldest_ledger
+        ))
     );
 }
 

@@ -15,7 +15,7 @@ This started as a mobile reputation-tracking app idea, but moved to a **Dev Tool
 
 ## Current status
 
-**Phase 4 complete — Phase 5 (output & UX polish) is next.** All three commands work. Read `docs/ROADMAP.md` next. Update this section as phases complete.
+**Phase 5 complete — Phase 6 (testing) is next.** All three commands work and are styled consistently. Read `docs/ROADMAP.md` next. Update this section as phases complete.
 
 Phase 1 built `src/network.rs` (`Connection::open` — the one place a `Server` is
 constructed) and `src/error.rs` (`RpcFailure` — translates client errors into distinct
@@ -65,6 +65,20 @@ Two findings from Phase 4:
 Exit codes are now meaningful: `0` found, `2` looked up successfully but absent, `1` error.
 `events` finding nothing stays `0`, since a quiet range is a real answer rather than a
 missing identifier. `src/outcome.rs` carries that distinction from commands to `main`.
+
+Phase 5 added `src/style.rs` and `--color <auto|always|never>`. All three commands now
+print through `style::field`, so they align on one label column instead of three ad-hoc
+layouts. Two rules matter here:
+
+- **Colour is off unless stdout is a terminal.** A tool whose `--json` is meant to pipe
+  into `jq` cannot leak escape codes into a pipeline. `NO_COLOR` is honoured; an explicit
+  `--color always` overrides it, matching how `git` and `ripgrep` treat an explicit flag.
+- **Padding is applied before styling.** ANSI codes count toward a format width, so
+  padding a coloured string silently misaligns every column. `style::field` pads the raw
+  label and colours afterwards.
+
+Styling uses bare ANSI constants rather than a colour crate — it is a handful of codes, and
+`std::io::IsTerminal` covers the detection.
 
 Two things Phase 2 turned up that later phases inherit:
 

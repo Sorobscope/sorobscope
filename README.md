@@ -38,17 +38,17 @@ cargo install --path .
 ```console
 $ sorobscope events CB6L3DIL5IHX7PCVHGJKYDZROSEHS5CGHKSMD6CGKV5HW7RDXY5NOBCX
 events for CB6L3DIL5IHX7PCVHGJKYDZROSEHS5CGHKSMD6CGKV5HW7RDXY5NOBCX on testnet
-searching from ledger 4412479 to 4429759 (last ~17280 ledgers; pass --since-ledger to widen)
+searching from ledger 4422004 to 4439284 (last ~17280 ledgers; pass --since-ledger to widen)
 
 ledger 4429704  2026-08-31T10:28:27Z
-  topics  [counter, inc]
-  data    4
-  tx      3e27afda4981783376f7c9160e6aa54a8b6a1cff7c1f9acd207ddf3b4da410a0
+  topics      [counter, inc]
+  data        4
+  tx          3e27afda4981783376f7c9160e6aa54a8b6a1cff7c1f9acd207ddf3b4da410a0
 
 ledger 4429706  2026-08-31T10:28:37Z
-  topics  [counter, tag, GCTWQOEUM67COLWIAVTMBE2J2NG7GHCBHFVWIOS6XDVXCJIORSYG3GZB]
-  data    [live, 4, GCTWQOEUM67COLWIAVTMBE2J2NG7GHCBHFVWIOS6XDVXCJIORSYG3GZB]
-  tx      57cc3d10f015741ced4ee558c3f36cf3cb7e6253f2c32d35982c8e493c849ab3
+  topics      [counter, tag, GCTWQOEUM67COLWIAVTMBE2J2NG7GHCBHFVWIOS6XDVXCJIORSYG3GZB]
+  data        [live, 4, GCTWQOEUM67COLWIAVTMBE2J2NG7GHCBHFVWIOS6XDVXCJIORSYG3GZB]
+  tx          57cc3d10f015741ced4ee558c3f36cf3cb7e6253f2c32d35982c8e493c849ab3
 ```
 
 `--follow` polls every 5s and streams new events until Ctrl-C. `--since-ledger N` widens
@@ -71,17 +71,17 @@ has no call that enumerates a contract's storage.
 ```console
 $ sorobscope entry CB6L3DIL5IHX7PCVHGJKYDZROSEHS5CGHKSMD6CGKV5HW7RDXY5NOBCX --key-symbol COUNTER
 entry for CB6L3DIL5IHX7PCVHGJKYDZROSEHS5CGHKSMD6CGKV5HW7RDXY5NOBCX on testnet
-  key          COUNTER
-  durability   persistent
-  value        4
-  updated      ledger 4429704
-  live until   ledger 4483568  (53694 ledgers away, ~3d 2h)
-  as of        ledger 4429874
+  key         COUNTER
+  durability  persistent
+  value       4
+  updated     ledger 4429704
+  live until  ledger 4483568  (44283 ledgers away, ~2d 13h)
+  as of       ledger 4439285
 ```
 
 ```console
 $ sorobscope entry CB6L3DIL5IHX7PCVHGJKYDZROSEHS5CGHKSMD6CGKV5HW7RDXY5NOBCX --key-symbol COUNTER --json
-{"contractId":"CB6L3DIL5IHX7PCVHGJKYDZROSEHS5CGHKSMD6CGKV5HW7RDXY5NOBCX","durability":"persistent","key":"COUNTER","lastModifiedLedger":4429704,"latestLedger":4429874,"ledgersRemaining":53694,"liveUntilLedger":4483568,"network":"testnet","value":4}
+{"contractId":"CB6L3DIL5IHX7PCVHGJKYDZROSEHS5CGHKSMD6CGKV5HW7RDXY5NOBCX","durability":"persistent","key":"COUNTER","lastModifiedLedger":4429704,"latestLedger":4439285,"ledgersRemaining":44283,"liveUntilLedger":4483568,"network":"testnet","value":4}
 ```
 
 The TTL line is the part raw tooling makes you work out for yourself: an entry about to
@@ -105,18 +105,18 @@ which one a contract used before you can read from it.
 ```console
 $ sorobscope tx 57cc3d10f015741ced4ee558c3f36cf3cb7e6253f2c32d35982c8e493c849ab3
 transaction 57cc3d10f015741ced4ee558c3f36cf3cb7e6253f2c32d35982c8e493c849ab3 on testnet
-  status     SUCCESS
-  ledger     4429706
-  at         2026-08-31T10:28:37Z
+  status      SUCCESS
+  ledger      4429706
+  at          2026-08-31T10:28:37Z
 
-  contract   CB6L3DIL5IHX7PCVHGJKYDZROSEHS5CGHKSMD6CGKV5HW7RDXY5NOBCX
-  function   tag
-  args       GCTWQOEUM67COLWIAVTMBE2J2NG7GHCBHFVWIOS6XDVXCJIORSYG3GZB
-             live
-  returned   4
+  contract    CB6L3DIL5IHX7PCVHGJKYDZROSEHS5CGHKSMD6CGKV5HW7RDXY5NOBCX
+  function    tag
+  args        GCTWQOEUM67COLWIAVTMBE2J2NG7GHCBHFVWIOS6XDVXCJIORSYG3GZB
+              live
+  returned    4
 
-  events (1)
-    [counter, tag, GCTWQOEUM67COLWIAVTMBE2J2NG7GHCBHFVWIOS6XDVXCJIORSYG3GZB]  [live, 4, GCTWQOEUM67COLWIAVTMBE2J2NG7GHCBHFVWIOS6XDVXCJIORSYG3GZB]
+  events      1
+              [counter, tag, GCTWQOEUM67COLWIAVTMBE2J2NG7GHCBHFVWIOS6XDVXCJIORSYG3GZB]  [live, 4, GCTWQOEUM67COLWIAVTMBE2J2NG7GHCBHFVWIOS6XDVXCJIORSYG3GZB]
 ```
 
 The contract, function name, and arguments aren't fields the RPC hands back — they live
@@ -129,9 +129,9 @@ cannot tell "no such transaction" apart from "older than I keep":
 $ sorobscope tx 0000000000000000000000000000000000000000000000000000000000000000
 Transaction 0000000000000000000000000000000000000000000000000000000000000000 was not found.
 
-This endpoint currently retains ledgers 4318250 to 4439209.
+This endpoint currently retains ledgers 4318327 to 4439286.
 
-Soroban RPC reports both "no such transaction" and "older than this endpoint retains" the same way, so this could be either. If the transaction closed before ledger 4318250, it is outside the window and no longer queryable here — point --rpc-url at an endpoint with deeper history, or use an indexer.
+Soroban RPC reports both "no such transaction" and "older than this endpoint retains" the same way, so this could be either. If the transaction closed before ledger 4318327, it is outside the window and no longer queryable here — point --rpc-url at an endpoint with deeper history, or use an indexer.
 ```
 
 ## Exit codes
@@ -147,8 +147,14 @@ Chosen so a script can tell a failed lookup from a broken tool:
 `events` returning no matches is exit `0`: the range was scanned and the contract was
 simply quiet, which is a real answer rather than a missing identifier.
 
-Global flags: `--network <testnet|futurenet|mainnet>` (default `testnet`),
-`--rpc-url <URL>` to point at a custom or local RPC, and `--json`.
+## Global flags
+
+`--network <testnet|futurenet|mainnet>` (default `testnet`), `--rpc-url <URL>` to point at
+a custom or local RPC, `--json`, and `--color <auto|always|never>`.
+
+Colour is used only when writing to a terminal, so piped and redirected output stays clean.
+`NO_COLOR` disables it; an explicit `--color always` overrides both, which is what you want
+for `| less -R`.
 
 ## Scope, and two honest limits
 
