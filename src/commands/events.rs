@@ -8,6 +8,7 @@ use soroban_client::{EventFilter, Pagination};
 use soroban_client::soroban_rpc::EventType;
 
 use crate::decode::{guard, scval_to_json, scval_to_readable};
+use crate::outcome::Outcome;
 use crate::network::Connection;
 
 /// How far back to look when `--since-ledger` isn't given. Ledgers close about every 5
@@ -28,7 +29,7 @@ pub async fn run(
     since_ledger: Option<u32>,
     follow: bool,
     json: bool,
-) -> anyhow::Result<()> {
+) -> anyhow::Result<Outcome> {
     let latest = connection
         .server
         .get_latest_ledger()
@@ -118,7 +119,7 @@ pub async fn run(
                 if !json {
                     println!("\nstopped.");
                 }
-                return Ok(());
+                return Ok(Outcome::Found);
             }
         }
     }
@@ -131,7 +132,10 @@ pub async fn run(
         );
     }
 
-    Ok(())
+    // A search that matched nothing is not the same as a missing identifier: the range
+    // was scanned successfully and the contract was simply quiet. That is a real answer,
+    // so it stays exit 0 — unlike `entry` and `tx`, which look up one specific thing.
+    Ok(Outcome::Found)
 }
 
 fn print_event(event: &EventResponse) {

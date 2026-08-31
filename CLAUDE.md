@@ -15,7 +15,7 @@ This started as a mobile reputation-tracking app idea, but moved to a **Dev Tool
 
 ## Current status
 
-**Phase 3 complete — Phase 4 (`tx` command) is next.** Read `docs/ROADMAP.md` next. Update this section as phases complete.
+**Phase 4 complete — Phase 5 (output & UX polish) is next.** All three commands work. Read `docs/ROADMAP.md` next. Update this section as phases complete.
 
 Phase 1 built `src/network.rs` (`Connection::open` — the one place a `Server` is
 constructed) and `src/error.rs` (`RpcFailure` — translates client errors into distinct
@@ -44,6 +44,27 @@ contract; there wasn't one to hand. Worth covering in Phase 6.
 
 `guard` moved from `commands/events.rs` to `decode.rs`, since `LedgerEntryResult::to_key()`
 and `to_data()` panic the same way `EventResponse`'s accessors do.
+
+Phase 4 built `src/commands/tx.rs` and `src/outcome.rs`. `tx` decodes the invoked
+contract, function name, arguments, return value and emitted events. The invocation is not
+a field the RPC returns — it is dug out of the transaction envelope XDR, under the
+operation's `InvokeHostFunction`. Non-invocation transactions (deploys, wasm uploads) are
+named by their actual host function rather than described vaguely.
+
+Two findings from Phase 4:
+
+- **The RPC cannot distinguish "no such transaction" from "outside the retention window".**
+  Both come back as `NOT_FOUND`. The roadmap asked for these to read differently; the
+  honest maximum is to report `NOT_FOUND` while stating the endpoint's retained range
+  (`oldestLedger`–`latestLedger`), which the response does carry, so the user can judge
+  which case they are in. Claiming to tell them apart would be a lie.
+- **`TransactionDetails`' accessors do not panic** — unlike `EventResponse` and
+  `LedgerEntryResult`, they decode with `.ok()` and return `Option`. `guard` is not needed
+  in `tx.rs`.
+
+Exit codes are now meaningful: `0` found, `2` looked up successfully but absent, `1` error.
+`events` finding nothing stays `0`, since a quiet range is a real answer rather than a
+missing identifier. `src/outcome.rs` carries that distinction from commands to `main`.
 
 Two things Phase 2 turned up that later phases inherit:
 

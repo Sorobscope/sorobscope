@@ -6,11 +6,11 @@ piping `stellar-cli` JSON through `jq` every time.
 
 Readable output by default, `--json` on every command for piping into other tooling.
 
-> ### Status: `events` and `entry` work; `tx` does not yet
+> ### Status: all three commands work
 >
-> `events` and `entry` work against real testnet data. `tx` still prints
-> `not implemented` — it lands in Phase 4 of [`docs/ROADMAP.md`](docs/ROADMAP.md).
-> The transcripts below are real output; the `tx` line shows the intended interface only.
+> `events`, `entry`, and `tx` all work against real testnet data, and every transcript
+> below is real captured output. What remains is polish, wider testing, and packaging —
+> Phases 5–7 of [`docs/ROADMAP.md`](docs/ROADMAP.md).
 
 ## Why this exists
 
@@ -100,12 +100,52 @@ Durability isn't a flag: persistent and temporary storage are queried together i
 request, and the contract's instance storage is checked too, so you don't have to know
 which one a contract used before you can read from it.
 
-### `tx` — not implemented yet
+### `tx` — working
 
-```sh
-# Decode a transaction and the events it emitted
-sorobscope tx <HASH>
+```console
+$ sorobscope tx 57cc3d10f015741ced4ee558c3f36cf3cb7e6253f2c32d35982c8e493c849ab3
+transaction 57cc3d10f015741ced4ee558c3f36cf3cb7e6253f2c32d35982c8e493c849ab3 on testnet
+  status     SUCCESS
+  ledger     4429706
+  at         2026-08-31T10:28:37Z
+
+  contract   CB6L3DIL5IHX7PCVHGJKYDZROSEHS5CGHKSMD6CGKV5HW7RDXY5NOBCX
+  function   tag
+  args       GCTWQOEUM67COLWIAVTMBE2J2NG7GHCBHFVWIOS6XDVXCJIORSYG3GZB
+             live
+  returned   4
+
+  events (1)
+    [counter, tag, GCTWQOEUM67COLWIAVTMBE2J2NG7GHCBHFVWIOS6XDVXCJIORSYG3GZB]  [live, 4, GCTWQOEUM67COLWIAVTMBE2J2NG7GHCBHFVWIOS6XDVXCJIORSYG3GZB]
 ```
+
+The contract, function name, and arguments aren't fields the RPC hands back — they live
+inside the transaction envelope XDR, which is most of what this command does for you.
+
+A transaction the endpoint doesn't have reports the retained window, because Soroban RPC
+cannot tell "no such transaction" apart from "older than I keep":
+
+```console
+$ sorobscope tx 0000000000000000000000000000000000000000000000000000000000000000
+Transaction 0000000000000000000000000000000000000000000000000000000000000000 was not found.
+
+This endpoint currently retains ledgers 4318250 to 4439209.
+
+Soroban RPC reports both "no such transaction" and "older than this endpoint retains" the same way, so this could be either. If the transaction closed before ledger 4318250, it is outside the window and no longer queryable here — point --rpc-url at an endpoint with deeper history, or use an indexer.
+```
+
+## Exit codes
+
+Chosen so a script can tell a failed lookup from a broken tool:
+
+| Code | Meaning |
+|---|---|
+| `0` | The query succeeded |
+| `2` | The query succeeded, but the entry or transaction does not exist |
+| `1` | Something went wrong — unreachable endpoint, rejected request, undecodable response |
+
+`events` returning no matches is exit `0`: the range was scanned and the contract was
+simply quiet, which is a real answer rather than a missing identifier.
 
 Global flags: `--network <testnet|futurenet|mainnet>` (default `testnet`),
 `--rpc-url <URL>` to point at a custom or local RPC, and `--json`.

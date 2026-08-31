@@ -3,6 +3,7 @@ mod commands;
 mod decode;
 mod error;
 mod network;
+mod outcome;
 
 use std::process::ExitCode;
 
@@ -10,13 +11,16 @@ use clap::Parser;
 
 use crate::cli::{Cli, Commands};
 use crate::network::Connection;
+use crate::outcome::Outcome;
 
 #[tokio::main]
 async fn main() -> ExitCode {
     let args = Cli::parse();
 
     match run(args).await {
-        Ok(()) => ExitCode::SUCCESS,
+        Ok(Outcome::Found) => ExitCode::SUCCESS,
+        // Distinct from both success and failure: the query worked, the thing isn't there.
+        Ok(Outcome::NotFound) => ExitCode::from(2),
         Err(e) => {
             // Errors go to stderr so `--json` output on stdout stays pipeable even when
             // a run fails partway.
@@ -26,7 +30,7 @@ async fn main() -> ExitCode {
     }
 }
 
-async fn run(args: Cli) -> anyhow::Result<()> {
+async fn run(args: Cli) -> anyhow::Result<Outcome> {
     // One shared constructor for every command — see network::Connection.
     let connection = Connection::open(args.network, args.rpc_url.as_deref())?;
 
@@ -37,7 +41,7 @@ async fn run(args: Cli) -> anyhow::Result<()> {
             follow,
         } => {
             commands::events::run(&connection, &contract_id, since_ledger, follow, args.json)
-                .await?;
+                .await
         }
 
         Commands::Entry {
@@ -54,15 +58,9 @@ async fn run(args: Cli) -> anyhow::Result<()> {
                 key_xdr,
                 args.json,
             )
-            .await?;
+            .await
         }
 
-        // Phase 4. Still opens a real connection above, so its error paths are exercised
-        // even though the command body isn't written yet.
-        Commands::Tx { hash } => {
-            println!("not implemented: tx {hash}");
-        }
+        Commands::Tx { hash } => commands::tx::run(&connection, &hash, args.json).await,
     }
-
-    Ok(())
 }

@@ -10,7 +10,10 @@ use crate::network::Network;
     long_about = "Read-only inspection of Soroban contracts: decoded events, decoded \
                   storage entries, and decoded transaction summaries.\n\n\
                   sorobscope never signs or submits a transaction and never needs a \
-                  wallet or secret key."
+                  wallet or secret key.\n\n\
+                  Exit codes: 0 the query succeeded; 2 the query succeeded but the entry \
+                  or transaction does not exist; 1 something went wrong (unreachable \
+                  endpoint, rejected request, undecodable response)."
 )]
 pub struct Cli {
     /// Network to query

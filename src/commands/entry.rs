@@ -14,6 +14,7 @@ use soroban_client::xdr::{
 };
 
 use crate::decode::{guard, scval_to_json, scval_to_readable};
+use crate::outcome::Outcome;
 use crate::network::Connection;
 
 /// Ledgers close about every 5 seconds. Used only to put a human-readable figure next to
@@ -27,7 +28,7 @@ pub async fn run(
     key_address: Option<String>,
     key_xdr: Option<String>,
     json: bool,
-) -> anyhow::Result<()> {
+) -> anyhow::Result<Outcome> {
     let contract = parse_contract(contract_id)?;
     let key = build_key(key_symbol, key_address, key_xdr)?;
 
@@ -108,11 +109,15 @@ pub async fn run(
     }
 
     match found {
-        Some(entry) => report(connection, contract_id, &key, &entry, latest, json),
-        None => report_missing(contract_id, &key, latest, json),
+        Some(entry) => {
+            report(connection, contract_id, &key, &entry, latest, json);
+            Ok(Outcome::Found)
+        }
+        None => {
+            report_missing(contract_id, &key, latest, json);
+            Ok(Outcome::NotFound)
+        }
     }
-
-    Ok(())
 }
 
 struct Found {
