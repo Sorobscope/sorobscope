@@ -40,11 +40,25 @@ async fn run(args: Cli) -> anyhow::Result<()> {
                 .await?;
         }
 
-        // Phases 3-4. These still open a real connection above, so their error paths are
-        // exercised even though the command bodies aren't written yet.
-        Commands::Entry { contract_id, .. } => {
-            println!("not implemented: entry {contract_id}");
+        Commands::Entry {
+            contract_id,
+            key_symbol,
+            key_address,
+            key_xdr,
+        } => {
+            commands::entry::run(
+                &connection,
+                &contract_id,
+                key_symbol,
+                key_address,
+                key_xdr,
+                args.json,
+            )
+            .await?;
         }
+
+        // Phase 4. Still opens a real connection above, so its error paths are exercised
+        // even though the command body isn't written yet.
         Commands::Tx { hash } => {
             println!("not implemented: tx {hash}");
         }

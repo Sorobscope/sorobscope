@@ -6,12 +6,11 @@ piping `stellar-cli` JSON through `jq` every time.
 
 Readable output by default, `--json` on every command for piping into other tooling.
 
-> ### Status: `events` works; `entry` and `tx` do not yet
+> ### Status: `events` and `entry` work; `tx` does not yet
 >
-> `events` works and decodes real testnet events. `entry` and `tx` still print
-> `not implemented` — they land in Phases 3–4 of [`docs/ROADMAP.md`](docs/ROADMAP.md).
-> The `events` transcript below is real output. The `entry` and `tx` lines show the
-> intended interface only.
+> `events` and `entry` work against real testnet data. `tx` still prints
+> `not implemented` — it lands in Phase 4 of [`docs/ROADMAP.md`](docs/ROADMAP.md).
+> The transcripts below are real output; the `tx` line shows the intended interface only.
 
 ## Why this exists
 
@@ -64,14 +63,46 @@ $ sorobscope events CB6L3DIL5IHX7PCVHGJKYDZROSEHS5CGHKSMD6CGKV5HW7RDXY5NOBCX --j
 {"ledger":4429706,"topics":["counter","tag","GCTWQOEUM67COLWIAVTMBE2J2NG7GHCBHFVWIOS6XDVXCJIORSYG3GZB"],"data":["live",4,"GCTWQOEUM67COLWIAVTMBE2J2NG7GHCBHFVWIOS6XDVXCJIORSYG3GZB"]}
 ```
 
-### `entry` and `tx` — not implemented yet
+### `entry` — working
+
+Reads **one** entry whose key you supply. There is no storage-dump mode, because the RPC
+has no call that enumerates a contract's storage.
+
+```console
+$ sorobscope entry CB6L3DIL5IHX7PCVHGJKYDZROSEHS5CGHKSMD6CGKV5HW7RDXY5NOBCX --key-symbol COUNTER
+entry for CB6L3DIL5IHX7PCVHGJKYDZROSEHS5CGHKSMD6CGKV5HW7RDXY5NOBCX on testnet
+  key          COUNTER
+  durability   persistent
+  value        4
+  updated      ledger 4429704
+  live until   ledger 4483568  (53694 ledgers away, ~3d 2h)
+  as of        ledger 4429874
+```
+
+```console
+$ sorobscope entry CB6L3DIL5IHX7PCVHGJKYDZROSEHS5CGHKSMD6CGKV5HW7RDXY5NOBCX --key-symbol COUNTER --json
+{"contractId":"CB6L3DIL5IHX7PCVHGJKYDZROSEHS5CGHKSMD6CGKV5HW7RDXY5NOBCX","durability":"persistent","key":"COUNTER","lastModifiedLedger":4429704,"latestLedger":4429874,"ledgersRemaining":53694,"liveUntilLedger":4483568,"network":"testnet","value":4}
+```
+
+The TTL line is the part raw tooling makes you work out for yourself: an entry about to
+expire looks identical to a healthy one until someone subtracts the current ledger from
+`liveUntilLedgerSeq`.
+
+Key shapes:
 
 ```sh
-# Read and decode ONE storage entry you already know the key for
-sorobscope entry <CONTRACT_ID> --key-symbol COUNTER
-sorobscope entry <CONTRACT_ID> --key-address G...
-sorobscope entry <CONTRACT_ID> --key-xdr <base64>   # escape hatch for composite keys
+sorobscope entry <CONTRACT_ID> --key-symbol COUNTER   # a bare Symbol
+sorobscope entry <CONTRACT_ID> --key-address G...     # a bare Address
+sorobscope entry <CONTRACT_ID> --key-xdr <base64>     # any other shape, as raw ScVal XDR
+```
 
+Durability isn't a flag: persistent and temporary storage are queried together in one
+request, and the contract's instance storage is checked too, so you don't have to know
+which one a contract used before you can read from it.
+
+### `tx` — not implemented yet
+
+```sh
 # Decode a transaction and the events it emitted
 sorobscope tx <HASH>
 ```

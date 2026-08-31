@@ -7,7 +7,7 @@ use soroban_client::soroban_rpc::EventResponse;
 use soroban_client::{EventFilter, Pagination};
 use soroban_client::soroban_rpc::EventType;
 
-use crate::decode::{scval_to_json, scval_to_readable};
+use crate::decode::{guard, scval_to_json, scval_to_readable};
 use crate::network::Connection;
 
 /// How far back to look when `--since-ledger` isn't given. Ledgers close about every 5
@@ -196,20 +196,4 @@ fn decode_value_json(event: &EventResponse) -> serde_json::Value {
 fn cursor_ledger(cursor: &str) -> Option<u32> {
     let toid: u64 = cursor.split('-').next()?.parse().ok()?;
     Some((toid >> 32) as u32)
-}
-
-/// Run an `EventResponse` accessor without letting it take the process down.
-///
-/// `EventResponse::topic()` and `value()` decode base64 XDR with `.expect()`, and the raw
-/// fields behind them are private — so there is no non-panicking path to that data through
-/// the crate's public API. One malformed event would otherwise abort a `--follow` session
-/// that is working perfectly well; catching the unwind downgrades it to one line marked
-/// `<undecodable>`. The panic hook is silenced for the duration so the crate's message
-/// doesn't land in the middle of the output.
-fn guard<T>(f: impl FnOnce() -> T) -> Option<T> {
-    let previous = std::panic::take_hook();
-    std::panic::set_hook(Box::new(|_| {}));
-    let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(f));
-    std::panic::set_hook(previous);
-    result.ok()
 }

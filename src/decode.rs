@@ -165,6 +165,23 @@ pub fn scval_to_json(v: &ScVal) -> Value {
     }
 }
 
+/// Run a decoding accessor without letting it take the process down.
+///
+/// Several soroban-client accessors — `EventResponse::topic()`/`value()`,
+/// `LedgerEntryResult::to_key()`/`to_data()` — decode base64 XDR with `.expect()`, and the
+/// raw fields behind them are private — so there is no non-panicking path to that data through
+/// the crate's public API. One malformed event would otherwise abort a `--follow` session
+/// that is working perfectly well; catching the unwind downgrades it to one line marked
+/// `<undecodable>`. The panic hook is silenced for the duration so the crate's message
+/// doesn't land in the middle of the output.
+pub fn guard<T>(f: impl FnOnce() -> T) -> Option<T> {
+    let previous = std::panic::take_hook();
+    std::panic::set_hook(Box::new(|_| {}));
+    let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(f));
+    std::panic::set_hook(previous);
+    result.ok()
+}
+
 /// Reassemble a `u128` from its XDR hi/lo halves.
 fn u128_from(p: &UInt128Parts) -> u128 {
     ((p.hi as u128) << 64) | (p.lo as u128)

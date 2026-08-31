@@ -15,7 +15,7 @@ This started as a mobile reputation-tracking app idea, but moved to a **Dev Tool
 
 ## Current status
 
-**Phase 2 complete — Phase 3 (`entry` command) is next.** Read `docs/ROADMAP.md` next. Update this section as phases complete.
+**Phase 3 complete — Phase 4 (`tx` command) is next.** Read `docs/ROADMAP.md` next. Update this section as phases complete.
 
 Phase 1 built `src/network.rs` (`Connection::open` — the one place a `Server` is
 constructed) and `src/error.rs` (`RpcFailure` — translates client errors into distinct
@@ -27,6 +27,23 @@ Phase 2 built `src/decode.rs` (the `ScVal` renderers — readable and JSON twins
 `src/commands/events.rs`. `events` is live: it decodes topics and payloads, supports
 `--since-ledger`, `--follow` (5s poll, clean Ctrl-C) and `--json`. Verified end to end by
 invoking the fixture and watching the event appear decoded within one poll interval.
+
+Phase 3 built `src/commands/entry.rs`. `entry` reads one known key and decodes it, and
+surfaces `liveUntilLedgerSeq` as both a ledger number and an approximate time — the small
+thing raw tooling makes you compute yourself. Verified against the fixture's `COUNTER`
+(value 4, live until 4483568), cross-checked against `stellar contract read`.
+
+Design note: **durability is not a flag.** The same symbol in persistent and temporary
+storage are two distinct ledger entries, so rather than make the user guess, `entry` asks
+for persistent, temporary, and the contract instance in a single batched
+`getLedgerEntries` call and reports whichever exists. The instance lookup exists because a
+contract using `env.storage().instance()` keeps values inside the instance entry, where a
+bare Symbol key finds nothing — the exact trap the fixture was reshaped to avoid in Phase 0.
+The instance path is unit-tested but has not been run against a live instance-storage
+contract; there wasn't one to hand. Worth covering in Phase 6.
+
+`guard` moved from `commands/events.rs` to `decode.rs`, since `LedgerEntryResult::to_key()`
+and `to_data()` panic the same way `EventResponse`'s accessors do.
 
 Two things Phase 2 turned up that later phases inherit:
 
