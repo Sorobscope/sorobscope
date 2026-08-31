@@ -15,13 +15,34 @@ This started as a mobile reputation-tracking app idea, but moved to a **Dev Tool
 
 ## Current status
 
-**Phase 1 complete — Phase 2 (`events` command) is next.** Read `docs/ROADMAP.md` next. Update this section as phases complete.
+**Phase 2 complete — Phase 3 (`entry` command) is next.** Read `docs/ROADMAP.md` next. Update this section as phases complete.
 
 Phase 1 built `src/network.rs` (`Connection::open` — the one place a `Server` is
 constructed) and `src/error.rs` (`RpcFailure` — translates client errors into distinct
 messages for unreachable / rejected / undecodable). `--network` and `--rpc-url` are live.
 Commands still print `not implemented`, but each one now opens a real connection first, so
 the error paths are exercised rather than theoretical.
+
+Phase 2 built `src/decode.rs` (the `ScVal` renderers — readable and JSON twins) and
+`src/commands/events.rs`. `events` is live: it decodes topics and payloads, supports
+`--since-ledger`, `--follow` (5s poll, clean Ctrl-C) and `--json`. Verified end to end by
+invoking the fixture and watching the event appear decoded within one poll interval.
+
+Two things Phase 2 turned up that later phases inherit:
+
+- **`EventResponse::topic()` and `value()` panic on bad XDR.** They decode with `.expect()`
+  and the raw base64 fields behind them are private, so there is no non-panicking path
+  through the crate's public API. `commands/events.rs::guard` catches the unwind and
+  renders `<undecodable>` instead, so one malformed event can't kill a `--follow` session.
+  Phases 3-4 should reuse that guard for any other accessor that decodes XDR eagerly.
+- **`getEvents` does not scan the whole range in one call.** It covers a bounded slice of
+  ledgers per request and hands back a cursor; a single call can return zero events while
+  real ones sit further along the range. You must page until the cursor's ledger reaches
+  `latestLedger`, or you silently under-report. The cursor is `"<toid>-<index>"` and the
+  TOID's high 32 bits are the ledger, which is how `events.rs::cursor_ledger` decides
+  whether the scan has caught up.
+- **`Pagination` and `EventFilter` are not `Clone`**, so a polling loop has to rebuild them
+  each pass rather than cloning one outside the loop.
 
 One finding worth carrying forward: **mainnet has no default RPC URL and that is
 deliberate.** The SDF runs public RPC for the test networks only; there is no free public

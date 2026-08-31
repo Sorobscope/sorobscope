@@ -1,4 +1,6 @@
 mod cli;
+mod commands;
+mod decode;
 mod error;
 mod network;
 
@@ -28,28 +30,18 @@ async fn run(args: Cli) -> anyhow::Result<()> {
     // One shared constructor for every command — see network::Connection.
     let connection = Connection::open(args.network, args.rpc_url.as_deref())?;
 
-    // Phase 1: no command has real logic yet, but each one does make a live call, so the
-    // error paths in error.rs are exercised for real rather than sitting untested. Phases
-    // 2-4 replace this probe with getEvents / getLedgerEntries / getTransaction.
-    let ledger = connection
-        .server
-        .get_latest_ledger()
-        .await
-        .map_err(|e| connection.fail(e))?;
-
-    println!(
-        "connected to {} at {}",
-        connection.network.name(),
-        connection.url
-    );
-    println!("  latest ledger : {}", ledger.sequence);
-    println!("  protocol      : {}", ledger.protocol_version);
-    println!();
-
     match args.command {
-        Commands::Events { contract_id, .. } => {
-            println!("not implemented: events {contract_id}");
+        Commands::Events {
+            contract_id,
+            since_ledger,
+            follow,
+        } => {
+            commands::events::run(&connection, &contract_id, since_ledger, follow, args.json)
+                .await?;
         }
+
+        // Phases 3-4. These still open a real connection above, so their error paths are
+        // exercised even though the command bodies aren't written yet.
         Commands::Entry { contract_id, .. } => {
             println!("not implemented: entry {contract_id}");
         }

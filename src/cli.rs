@@ -35,7 +35,13 @@ pub enum Commands {
     #[command(long_about = "Fetch and decode the events a contract has emitted.\n\n\
                             Only reaches as far back as the RPC endpoint's retention \
                             window — commonly around a week, but it varies by endpoint \
-                            and release. Nothing older than that is queryable.")]
+                            and release. Nothing older than that is queryable.\n\n\
+                            Without --since-ledger this searches roughly the last day. A \
+                            contract that was quiet in that window reports no events; \
+                            widen the search with --since-ledger.\n\n\
+                            With --json, events are emitted as one JSON object per line \
+                            (JSONL) rather than a single array, so --follow streams into \
+                            jq unchanged.")]
     Events {
         /// Contract ID to fetch events for (C...)
         contract_id: String,

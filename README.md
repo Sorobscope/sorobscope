@@ -6,16 +6,12 @@ piping `stellar-cli` JSON through `jq` every time.
 
 Readable output by default, `--json` on every command for piping into other tooling.
 
-> ### Status: scaffolding — commands are not implemented yet
+> ### Status: `events` works; `entry` and `tx` do not yet
 >
-> Phases 0–1 of [`docs/ROADMAP.md`](docs/ROADMAP.md) are complete: the CLI parses,
-> `--network` and `--rpc-url` work, the RPC client reaches real testnet, failures report
-> themselves clearly, and there's a deployed contract to test against. But `events`,
-> `entry`, and `tx` currently print `not implemented`. The decoding — which is the actual
-> product — lands in Phases 2–4.
->
-> The examples below are the intended interface, **not** working transcripts. Real
-> terminal output replaces them in Phase 7.
+> `events` works and decodes real testnet events. `entry` and `tx` still print
+> `not implemented` — they land in Phases 3–4 of [`docs/ROADMAP.md`](docs/ROADMAP.md).
+> The `events` transcript below is real output. The `entry` and `tx` lines show the
+> intended interface only.
 
 ## Why this exists
 
@@ -38,10 +34,39 @@ cargo install --path .
 
 ## Commands
 
-```sh
-# Decode the events a contract has emitted
-sorobscope events <CONTRACT_ID> [--since-ledger N] [--follow]
+### `events` — working
 
+```console
+$ sorobscope events CB6L3DIL5IHX7PCVHGJKYDZROSEHS5CGHKSMD6CGKV5HW7RDXY5NOBCX
+events for CB6L3DIL5IHX7PCVHGJKYDZROSEHS5CGHKSMD6CGKV5HW7RDXY5NOBCX on testnet
+searching from ledger 4412479 to 4429759 (last ~17280 ledgers; pass --since-ledger to widen)
+
+ledger 4429704  2026-08-31T10:28:27Z
+  topics  [counter, inc]
+  data    4
+  tx      3e27afda4981783376f7c9160e6aa54a8b6a1cff7c1f9acd207ddf3b4da410a0
+
+ledger 4429706  2026-08-31T10:28:37Z
+  topics  [counter, tag, GCTWQOEUM67COLWIAVTMBE2J2NG7GHCBHFVWIOS6XDVXCJIORSYG3GZB]
+  data    [live, 4, GCTWQOEUM67COLWIAVTMBE2J2NG7GHCBHFVWIOS6XDVXCJIORSYG3GZB]
+  tx      57cc3d10f015741ced4ee558c3f36cf3cb7e6253f2c32d35982c8e493c849ab3
+```
+
+`--follow` polls every 5s and streams new events until Ctrl-C. `--since-ledger N` widens
+the search past the default ~1 day window.
+
+With `--json`, events are emitted one JSON object per line, so `--follow` pipes straight
+into `jq` without buffering an array that never ends:
+
+```console
+$ sorobscope events CB6L3DIL5IHX7PCVHGJKYDZROSEHS5CGHKSMD6CGKV5HW7RDXY5NOBCX --json | jq -c '{ledger, topics, data}'
+{"ledger":4429704,"topics":["counter","inc"],"data":4}
+{"ledger":4429706,"topics":["counter","tag","GCTWQOEUM67COLWIAVTMBE2J2NG7GHCBHFVWIOS6XDVXCJIORSYG3GZB"],"data":["live",4,"GCTWQOEUM67COLWIAVTMBE2J2NG7GHCBHFVWIOS6XDVXCJIORSYG3GZB"]}
+```
+
+### `entry` and `tx` — not implemented yet
+
+```sh
 # Read and decode ONE storage entry you already know the key for
 sorobscope entry <CONTRACT_ID> --key-symbol COUNTER
 sorobscope entry <CONTRACT_ID> --key-address G...
