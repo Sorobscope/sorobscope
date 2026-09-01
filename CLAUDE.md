@@ -15,7 +15,7 @@ This started as a mobile reputation-tracking app idea, but moved to a **Dev Tool
 
 ## Current status
 
-**Phase 5 complete — Phase 6 (testing) is next.** All three commands work and are styled consistently. Read `docs/ROADMAP.md` next. Update this section as phases complete.
+**Phase 6 complete — Phase 7 (docs, packaging, demo) is next.** All three commands work, styled consistently, with unit and gated integration tests. Read `docs/ROADMAP.md` next. Update this section as phases complete.
 
 Phase 1 built `src/network.rs` (`Connection::open` — the one place a `Server` is
 constructed) and `src/error.rs` (`RpcFailure` — translates client errors into distinct
@@ -39,8 +39,8 @@ for persistent, temporary, and the contract instance in a single batched
 `getLedgerEntries` call and reports whichever exists. The instance lookup exists because a
 contract using `env.storage().instance()` keeps values inside the instance entry, where a
 bare Symbol key finds nothing — the exact trap the fixture was reshaped to avoid in Phase 0.
-The instance path is unit-tested but has not been run against a live instance-storage
-contract; there wasn't one to hand. Worth covering in Phase 6.
+The instance path was unit-tested only until Phase 6, which deployed a second fixture to
+cover it against a live contract — see below.
 
 `guard` moved from `commands/events.rs` to `decode.rs`, since `LedgerEntryResult::to_key()`
 and `to_data()` panic the same way `EventResponse`'s accessors do.
@@ -79,6 +79,25 @@ layouts. Two rules matter here:
 
 Styling uses bare ANSI constants rather than a colour crate — it is a handful of codes, and
 `std::io::IsTerminal` covers the detection.
+
+Phase 6 added `tests/integration_testnet.rs` (10 tests, gated behind
+`SOROBSCOPE_TEST_NETWORK`) and extended the unit suite to 33. Gated so a flaky network or
+an expired fixture can't take the unit suite down with it; assertions check the *shape* of
+output, not exact text, so formatting changes don't break them.
+
+**The instance-storage gap flagged in Phase 3 is now closed.** A second fixture,
+`fixtures/instance-counter` (`CAGHKC2CYSLSL5J7C4OHEN26YKRH5BND7SGBTHUVZYBRS6OWUW5RLTAY`), is the stock
+`soroban-examples` shape: `COUNTER` in instance storage. It is the case that makes the
+fallback worth having — `stellar contract read` fails outright on it ("no matching contract
+data entries were found") because there is no standalone entry, while `entry` finds the
+value in the instance's storage map and says where it lives. That comparison is the
+clearest demonstration the project has of doing something the existing tooling does not.
+
+Also verified against a contract this project didn't write (the `reputation` contract at
+`CASDNMYRVVFRTCS23GK2M77VP3W2YCB6NXKT33KL5ZIX6VW4W4TYEPOM`), per `docs/CLI_SPEC.md`'s
+requirement to check graceful degradation on an unfamiliar shape. It decoded a `Map`
+payload (`{timestamp: ...}`) — a branch neither fixture exercises — and a composite
+`Vec` key through `--key-xdr`. Nothing panicked.
 
 Two things Phase 2 turned up that later phases inherit:
 

@@ -100,6 +100,28 @@ Durability isn't a flag: persistent and temporary storage are queried together i
 request, and the contract's instance storage is checked too, so you don't have to know
 which one a contract used before you can read from it.
 
+That last part matters more than it sounds. Most contracts — including the stock
+`soroban-examples` ones — keep state in *instance* storage, where the value lives inside
+the contract instance entry rather than as an addressable entry of its own. A bare Symbol
+ledger key finds nothing there:
+
+```console
+$ stellar contract read --id CAGHKC2CYSLSL5J7C4OHEN26YKRH5BND7SGBTHUVZYBRS6OWUW5RLTAY --key COUNTER --durability persistent --network testnet
+❌ error: no matching contract data entries were found for the specified contract id
+```
+
+```console
+$ sorobscope entry CAGHKC2CYSLSL5J7C4OHEN26YKRH5BND7SGBTHUVZYBRS6OWUW5RLTAY --key-symbol COUNTER
+entry for CAGHKC2CYSLSL5J7C4OHEN26YKRH5BND7SGBTHUVZYBRS6OWUW5RLTAY on testnet
+  key         COUNTER
+  durability  instance
+  value       2
+  live until  (tied to the contract instance's own TTL)
+  as of       ledger 4439447
+
+Found in the contract's instance storage, not as a standalone entry. Values written with env.storage().instance() live inside the contract instance and share its TTL.
+```
+
 ### `tx` — working
 
 ```console
@@ -177,17 +199,27 @@ Both are properties of the RPC surface, not gaps waiting to be quietly closed. R
 past them would mean integrating a historical indexer, which is tracked as future work
 rather than implied by the help text.
 
-## Testing against a real contract
+## Testing
 
-A fixture contract is deployed on testnet and ready to point at:
+Unit tests cover the decoding logic and need no network:
 
+```sh
+cargo test
 ```
-CB6L3DIL5IHX7PCVHGJKYDZROSEHS5CGHKSMD6CGKV5HW7RDXY5NOBCX
+
+Integration tests run the real binary against real testnet. They are gated so a flaky
+network or an expired fixture can't take the unit suite down with it:
+
+```sh
+SOROBSCOPE_TEST_NETWORK=testnet cargo test --test integration_testnet
 ```
 
-It has a `COUNTER` entry in persistent storage and emits events with both simple and
-composite payloads. Source and deploy instructions:
-[`fixtures/increment/`](fixtures/increment/README.md).
+Two fixture contracts are deployed on testnet and ready to point at:
+
+| Contract | Storage | Why it exists |
+|---|---|---|
+| [`CB6L…OBCX`](fixtures/increment/README.md) | persistent | `COUNTER` as a standalone entry; emits events with simple and composite payloads |
+| [`CAGH…LTAY`](fixtures/instance-counter/README.md) | instance | The stock `soroban-examples` shape, where a bare Symbol key finds nothing |
 
 ## Docs
 

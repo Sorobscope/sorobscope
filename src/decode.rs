@@ -328,4 +328,84 @@ mod tests {
     fn json_void_is_null() {
         assert_eq!(scval_to_json(&ScVal::Void), Value::Null);
     }
+
+    #[test]
+    fn timepoints_and_durations_are_labelled() {
+        use soroban_client::xdr::{Duration, TimePoint};
+        // Labelled in readable output so a bare number isn't mistaken for a plain integer.
+        assert_eq!(
+            scval_to_readable(&ScVal::Timepoint(TimePoint(1_788_187_227))),
+            "timepoint(1788187227)"
+        );
+        assert_eq!(
+            scval_to_readable(&ScVal::Duration(Duration(3600))),
+            "duration(3600)"
+        );
+        // JSON drops the label and keeps the number as a string, like other 64-bit values.
+        assert_eq!(
+            scval_to_json(&ScVal::Timepoint(TimePoint(1_788_187_227))),
+            json!("1788187227")
+        );
+    }
+
+    /// Rust has no 256-bit integer and stellar-xdr keeps its decimal helpers crate-private,
+    /// so these render as hex. Lossless and unambiguous, just not decimal.
+    #[test]
+    fn wide_integers_render_as_hex() {
+        use soroban_client::xdr::UInt256Parts;
+        let v = ScVal::U256(UInt256Parts {
+            hi_hi: 0,
+            hi_lo: 0,
+            lo_hi: 0,
+            lo_lo: 255,
+        });
+        assert_eq!(
+            scval_to_readable(&v),
+            "0x00000000000000000000000000000000000000000000000000000000000000ff"
+        );
+        assert!(scval_to_json(&v).is_string());
+    }
+
+    /// Addresses must come out as strkey — the G.../C... form people can paste elsewhere —
+    /// rather than as raw bytes.
+    #[test]
+    fn addresses_render_as_strkey() {
+        use std::str::FromStr;
+        use soroban_client::xdr::ScAddress;
+
+        let account = "GCTWQOEUM67COLWIAVTMBE2J2NG7GHCBHFVWIOS6XDVXCJIORSYG3GZB";
+        let v = ScVal::Address(ScAddress::from_str(account).unwrap());
+        assert_eq!(scval_to_readable(&v), account);
+        assert_eq!(scval_to_json(&v), json!(account));
+
+        let contract = "CB6L3DIL5IHX7PCVHGJKYDZROSEHS5CGHKSMD6CGKV5HW7RDXY5NOBCX";
+        let v = ScVal::Address(ScAddress::from_str(contract).unwrap());
+        assert_eq!(scval_to_readable(&v), contract);
+    }
+
+    #[test]
+    fn ledger_key_markers_are_readable() {
+        use soroban_client::xdr::ScNonceKey;
+        assert_eq!(
+            scval_to_readable(&ScVal::LedgerKeyContractInstance),
+            "<contract instance key>"
+        );
+        assert_eq!(
+            scval_to_readable(&ScVal::LedgerKeyNonce(ScNonceKey { nonce: 42 })),
+            "<nonce 42>"
+        );
+    }
+
+    #[test]
+    fn i64_keeps_its_sign() {
+        assert_eq!(scval_to_readable(&ScVal::I64(-9_223_372_036_854_775_808)), "-9223372036854775808");
+        assert_eq!(scval_to_json(&ScVal::I64(-1)), json!("-1"));
+    }
+
+    #[test]
+    fn empty_bytes_render_as_bare_prefix() {
+        use soroban_client::xdr::ScBytes;
+        let v = ScVal::Bytes(ScBytes(vec![].try_into().unwrap()));
+        assert_eq!(scval_to_readable(&v), "0x");
+    }
 }
