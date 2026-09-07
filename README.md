@@ -27,7 +27,7 @@ Requires a Rust toolchain. No wasm target or contract tooling needed — this is
 native binary.
 
 ```sh
-git clone <this-repo> && cd Sorobscope
+git clone https://github.com/adewuyito/sorobscope && cd sorobscope
 cargo install --path .
 ```
 
@@ -220,6 +220,17 @@ Two fixture contracts are deployed on testnet and ready to point at:
 |---|---|---|
 | [`CB6L…OBCX`](fixtures/increment/README.md) | persistent | `COUNTER` as a standalone entry; emits events with simple and composite payloads |
 | [`CAGH…LTAY`](fixtures/instance-counter/README.md) | instance | The stock `soroban-examples` shape, where a bare Symbol key finds nothing |
+
+## Contributing
+
+Deferred work is tracked as [open issues](https://github.com/adewuyito/sorobscope/issues),
+including several tagged `good first issue`. The larger ones — a schema-aware key builder
+for composite keys, and reaching history beyond the RPC's retention window — are described
+with enough context to pick up cold.
+
+## Licence
+
+[Apache-2.0](LICENSE), matching the rest of the Stellar ecosystem.
 
 ## Docs
 

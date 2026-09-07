@@ -2,6 +2,16 @@
 name = "sorobscope"
 version = "0.1.0"
 edition = "2024"
+description = "Human-readable Soroban RPC inspection: decoded contract events, storage entries, and transaction summaries. Read-only."
+license = "Apache-2.0"
+repository = "https://github.com/adewuyito/sorobscope"
+homepage = "https://github.com/adewuyito/sorobscope"
+readme = "README.md"
+keywords = ["stellar", "soroban", "blockchain", "cli", "xdr"]
+categories = ["command-line-utilities", "development-tools"]
+# The fixture contracts are separate crates used only for testing against a live
+# network. They are not part of the binary and have no business in a published tarball.
+exclude = ["fixtures/", "docs/", "CLAUDE.md"]
 
 [dependencies]
 anyhow = "1.0.104"
