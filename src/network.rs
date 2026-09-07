@@ -47,6 +47,19 @@ impl Network {
         }
     }
 
+    /// Environment variable that supplies this network's RPC URL when `--rpc-url` isn't
+    /// given.
+    ///
+    /// Per-network rather than one global override, so a mainnet endpoint can be set
+    /// permanently without also hijacking testnet, which has a perfectly good default.
+    pub fn env_var(self) -> &'static str {
+        match self {
+            Network::Testnet => "SOROBSCOPE_TESTNET_RPC_URL",
+            Network::Futurenet => "SOROBSCOPE_FUTURENET_RPC_URL",
+            Network::Mainnet => "SOROBSCOPE_MAINNET_RPC_URL",
+        }
+    }
+
     /// The network passphrase.
     ///
     /// Unused today, and worth explaining why it's here anyway: a passphrase identifies
@@ -62,6 +75,27 @@ impl Network {
             Network::Mainnet => Networks::public(),
         }
     }
+}
+
+/// Pick the endpoint for `network`, in precedence order.
+///
+/// An explicit `--rpc-url` wins over the environment, which wins over the built-in default
+/// — the usual convention, and it keeps a one-off override possible on a machine that has
+/// the variable set permanently. An empty variable counts as unset rather than as an empty
+/// URL, since that is almost always an unset shell variable rather than intent.
+///
+/// Split out from [`Connection::open`] so the precedence can be tested without mutating
+/// the process environment, which is global and would race across parallel tests.
+fn resolve_url(network: Network, flag: Option<&str>, from_env: Option<&str>) -> Option<String> {
+    if let Some(explicit) = flag {
+        return Some(explicit.to_string());
+    }
+    if let Some(value) = from_env
+        && !value.trim().is_empty()
+    {
+        return Some(value.to_string());
+    }
+    network.default_rpc_url().map(str::to_string)
 }
 
 /// A configured RPC client plus the context needed to report failures usefully.
@@ -81,18 +115,15 @@ impl Connection {
     /// Note this does not make a request — it only constructs. Nothing here proves the
     /// endpoint is alive; the first real call is what surfaces an unreachable host.
     pub fn open(network: Network, rpc_url: Option<&str>) -> Result<Self, RpcFailure> {
-        let url = match rpc_url {
-            Some(explicit) => explicit.to_string(),
-            None => network
-                .default_rpc_url()
-                .ok_or(RpcFailure::NoDefaultEndpoint { network })?
-                .to_string(),
-        };
+        let from_env = std::env::var(network.env_var()).ok();
+        let url = resolve_url(network, rpc_url, from_env.as_deref())
+            .ok_or(RpcFailure::NoDefaultEndpoint { network })?;
 
-        // Plain HTTP is refused by default. We relax that only for an explicitly supplied
-        // --rpc-url, which is the local-instance case (http://localhost:8000); the built-in
-        // defaults are all HTTPS and stay that way.
-        let allow_http = rpc_url.is_some() && url.starts_with("http://");
+        // Plain HTTP is refused by default. We relax it only for a URL the user supplied
+        // themselves — by flag or by environment — which is the local-instance case
+        // (http://localhost:8000). The built-in defaults are all HTTPS and stay that way.
+        let user_supplied = rpc_url.is_some() || from_env.is_some();
+        let allow_http = user_supplied && url.starts_with("http://");
 
         let options = Options {
             allow_http,
@@ -113,5 +144,64 @@ impl Connection {
     /// Attach this connection's endpoint to an error from the client crate.
     pub fn fail(&self, err: soroban_client::error::Error) -> RpcFailure {
         RpcFailure::classify(err, &self.url)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn an_explicit_flag_beats_everything() {
+        let url = resolve_url(
+            Network::Testnet,
+            Some("https://flag.example"),
+            Some("https://env.example"),
+        );
+        assert_eq!(url.as_deref(), Some("https://flag.example"));
+    }
+
+    #[test]
+    fn the_environment_beats_the_built_in_default() {
+        let url = resolve_url(Network::Testnet, None, Some("https://env.example"));
+        assert_eq!(url.as_deref(), Some("https://env.example"));
+    }
+
+    #[test]
+    fn the_default_applies_when_nothing_is_supplied() {
+        let url = resolve_url(Network::Testnet, None, None);
+        assert_eq!(url.as_deref(), Some("https://soroban-testnet.stellar.org"));
+    }
+
+    /// An empty variable is an unset shell variable far more often than it is intent, and
+    /// treating it as a URL would produce a baffling connection error.
+    #[test]
+    fn an_empty_environment_variable_counts_as_unset() {
+        assert_eq!(
+            resolve_url(Network::Testnet, None, Some("")).as_deref(),
+            Some("https://soroban-testnet.stellar.org")
+        );
+        assert_eq!(
+            resolve_url(Network::Testnet, None, Some("   ")).as_deref(),
+            Some("https://soroban-testnet.stellar.org")
+        );
+    }
+
+    /// Mainnet has no built-in default on purpose, so with nothing supplied it must stay
+    /// unresolved rather than inventing an endpoint.
+    #[test]
+    fn mainnet_has_no_default_but_accepts_an_override() {
+        assert_eq!(resolve_url(Network::Mainnet, None, None), None);
+        assert_eq!(
+            resolve_url(Network::Mainnet, None, Some("https://mainnet.example")).as_deref(),
+            Some("https://mainnet.example")
+        );
+    }
+
+    #[test]
+    fn each_network_reads_its_own_variable() {
+        assert_eq!(Network::Mainnet.env_var(), "SOROBSCOPE_MAINNET_RPC_URL");
+        assert_eq!(Network::Testnet.env_var(), "SOROBSCOPE_TESTNET_RPC_URL");
+        assert_eq!(Network::Futurenet.env_var(), "SOROBSCOPE_FUTURENET_RPC_URL");
     }
 }

@@ -184,6 +184,45 @@ Colour is used only when writing to a terminal, so piped and redirected output s
 `NO_COLOR` disables it; an explicit `--color always` overrides both, which is what you want
 for `| less -R`.
 
+## Mainnet
+
+Nothing to deploy — the tool is read-only, so mainnet is just a different endpoint. There
+is no default one, because the SDF runs public RPC for the test networks only and guessing
+a URL would produce a confusing connection failure instead of a clear message.
+
+```sh
+sorobscope entry <CONTRACT_ID> --key-symbol METADATA \
+  --network mainnet --rpc-url https://mainnet.sorobanrpc.com
+```
+
+Or set it once and drop the flag — each network reads its own variable, so this doesn't
+disturb testnet:
+
+```sh
+export SOROBSCOPE_MAINNET_RPC_URL=https://mainnet.sorobanrpc.com
+sorobscope entry <CONTRACT_ID> --key-symbol METADATA --network mainnet
+```
+
+Precedence is `--rpc-url` > environment > built-in default.
+
+Open endpoints needing no signup — all shared and rate-limited:
+
+| Endpoint | Provider |
+|---|---|
+| `https://mainnet.sorobanrpc.com` | sorobanrpc.com |
+| `https://soroban-rpc.mainnet.stellar.gateway.fm` | Gateway |
+| `https://stellar.api.onfinality.io/public` | OnFinality |
+| `https://stellar-soroban-public.nodies.app` | Nodies |
+
+For sustained use, take a keyed endpoint from a
+[provider](https://developers.stellar.org/docs/data/apis/rpc/providers) — Blockdaemon,
+QuickNode, Validation Cloud, Ankr, Alchemy and others offer Stellar RPC, several with
+archive nodes. Archive matters here: retention is this tool's main limit, and a public
+endpoint typically keeps only about a week of history.
+
+Reads cost nothing and need no account — `sorobscope` never signs or submits, so pointing
+it at mainnet carries no risk beyond the endpoint seeing your queries.
+
 ## Scope, and two honest limits
 
 `sorobscope` **never signs or submits a transaction** and never needs a wallet or secret

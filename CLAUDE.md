@@ -54,9 +54,24 @@ retention window advances continuously, so any fixed ledger number eventually fa
 range and the endpoint rejects the request — a failure that says nothing about the tool.
 This bit once already. They use the default lookback and treat a quiet window as a skip.
 
-**Still not done:** the tool has never been run against mainnet. There is no free public
-mainnet RPC to point it at, so this needs an endpoint from the maintainer. Until then,
-mainnet behaviour is unverified.
+**Mainnet is now verified.** An earlier note here claimed testing was blocked for want of
+an endpoint; that was wrong. The SDF genuinely runs public RPC for the test networks only —
+so the no-default-for-mainnet rule stands — but several third parties publish open mainnet
+endpoints needing no signup. All three commands were run against
+`https://mainnet.sorobanrpc.com`:
+
+- `events` decoded live `[fee, G…]` events from the native XLM SAC
+  (`CAS3J7GYLGXMF6TDJBBYYSE3HQ6BBSMLNUQ34T6TZMYMW2EVH34XOWMA`)
+- `entry --key-symbol METADATA` on that contract returned
+  `{decimal: 7, name: "native", symbol: "native"}` from instance storage, with a live TTL
+- `tx` decoded a classic (non-Soroban) mainnet transaction and named it as such
+
+Endpoints can now be set per network via `SOROBSCOPE_MAINNET_RPC_URL` and friends, so a
+mainnet URL need not be retyped. Precedence is `--rpc-url` > environment > built-in
+default; an empty variable counts as unset, since that is almost always an unset shell
+variable rather than intent. `network::resolve_url` is split out so this is testable
+without mutating the process environment, which is global and would race across parallel
+tests.
 
 Read `docs/ROADMAP.md` next. Update this section as phases complete.
 

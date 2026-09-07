@@ -146,15 +146,25 @@ impl fmt::Display for RpcFailure {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             RpcFailure::NoDefaultEndpoint { network } => {
+                // Naming endpoints that actually work matters more than being vague here:
+                // the SDF runs public RPC for the test networks only, so a user hitting
+                // this has no obvious next step unless we give them one.
                 write!(
                     f,
                     "no default RPC endpoint for {}\n\n\
-                     There is no free public {} RPC to fall back on, so you need to name \
-                     one yourself:\n  \
-                     --rpc-url https://your-rpc-provider.example\n\n\
-                     Use a commercial RPC provider, or run your own instance.",
+                     The SDF runs public RPC for the test networks only, so there is no \
+                     endpoint to fall back on here. Name one:\n\n  \
+                     --rpc-url https://mainnet.sorobanrpc.com\n\n\
+                     Or set it once, and drop the flag:\n\n  \
+                     export {}=https://mainnet.sorobanrpc.com\n\n\
+                     Other open endpoints, no signup:\n  \
+                     https://soroban-rpc.mainnet.stellar.gateway.fm\n  \
+                     https://stellar.api.onfinality.io/public\n\n\
+                     These are shared and rate-limited. For sustained use take a keyed \
+                     endpoint from a provider — see\n  \
+                     https://developers.stellar.org/docs/data/apis/rpc/providers",
                     network.name(),
-                    network.name(),
+                    network.env_var(),
                 )
             }
 

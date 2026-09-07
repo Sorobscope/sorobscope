@@ -16,14 +16,20 @@ use crate::style::ColorChoice;
                   or transaction does not exist; 1 something went wrong (unreachable \
                   endpoint, rejected request, undecodable response).\n\n\
                   Colour is used only when writing to a terminal, and is disabled by \
-                  NO_COLOR or --color never, so piped and redirected output stays clean."
+                  NO_COLOR or --color never, so piped and redirected output stays clean.\n\n\
+                  Mainnet has no default endpoint, because the SDF runs public RPC for the \
+                  test networks only. Supply one with --rpc-url, or set it once with \
+                  SOROBSCOPE_MAINNET_RPC_URL."
 )]
 pub struct Cli {
     /// Network to query
     #[arg(long, global = true, default_value = "testnet")]
     pub network: Network,
 
-    /// Override the default RPC URL for --network (e.g. a local or custom RPC instance)
+    /// Override the RPC URL for --network (a provider endpoint, or a local instance).
+    ///
+    /// Takes precedence over SOROBSCOPE_<NETWORK>_RPC_URL, which is the way to set an
+    /// endpoint once rather than passing this every time.
     #[arg(long, global = true, value_name = "URL")]
     pub rpc_url: Option<String>,
 
