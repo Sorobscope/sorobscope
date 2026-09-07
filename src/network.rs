@@ -103,7 +103,11 @@ impl Connection {
 
         let server = Server::new(&url, options).map_err(|e| RpcFailure::classify(e, &url))?;
 
-        Ok(Connection { server, url, network })
+        Ok(Connection {
+            server,
+            url,
+            network,
+        })
     }
 
     /// Attach this connection's endpoint to an error from the client crate.

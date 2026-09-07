@@ -1,5 +1,8 @@
 # sorobscope
 
+[![CI](https://github.com/adewuyito/sorobscope/actions/workflows/ci.yml/badge.svg)](https://github.com/adewuyito/sorobscope/actions/workflows/ci.yml)
+[![Licence](https://img.shields.io/badge/licence-Apache--2.0-blue.svg)](LICENSE)
+
 **Human-readable Soroban RPC inspection.** A read-only Rust CLI that decodes contract
 events, storage entries, and transaction summaries — instead of hand-parsing base64 XDR or
 piping `stellar-cli` JSON through `jq` every time.

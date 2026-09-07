@@ -4,13 +4,13 @@ use std::time::Duration;
 
 use serde_json::json;
 use soroban_client::soroban_rpc::EventResponse;
-use soroban_client::{EventFilter, Pagination};
 use soroban_client::soroban_rpc::EventType;
+use soroban_client::{EventFilter, Pagination};
 
 use crate::decode::{guard, scval_to_json, scval_to_readable};
+use crate::network::Connection;
 use crate::outcome::Outcome;
 use crate::style;
-use crate::network::Connection;
 
 /// How far back to look when `--since-ledger` isn't given. Ledgers close about every 5
 /// seconds, so this is roughly a day. Deliberately well inside a typical retention window:
@@ -194,13 +194,7 @@ fn decode_value(event: &EventResponse) -> Option<String> {
 }
 
 fn decode_topics_json(event: &EventResponse) -> serde_json::Value {
-    match guard(|| {
-        event
-            .topic()
-            .iter()
-            .map(scval_to_json)
-            .collect::<Vec<_>>()
-    }) {
+    match guard(|| event.topic().iter().map(scval_to_json).collect::<Vec<_>>()) {
         Some(topics) => serde_json::Value::Array(topics),
         None => json!("<undecodable>"),
     }

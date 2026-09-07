@@ -7,9 +7,9 @@ use soroban_client::xdr::{
 };
 
 use crate::decode::{scval_to_json, scval_to_readable};
+use crate::network::Connection;
 use crate::outcome::Outcome;
 use crate::style;
-use crate::network::Connection;
 
 pub async fn run(connection: &Connection, hash: &str, json: bool) -> anyhow::Result<Outcome> {
     let response = connection
@@ -29,9 +29,23 @@ pub async fn run(connection: &Connection, hash: &str, json: bool) -> anyhow::Res
     let events = contract_events(&response);
 
     if json {
-        report_json(connection, hash, &response, invocation, return_value, &events);
+        report_json(
+            connection,
+            hash,
+            &response,
+            invocation,
+            return_value,
+            &events,
+        );
     } else {
-        report_readable(connection, hash, &response, invocation, return_value, &events);
+        report_readable(
+            connection,
+            hash,
+            &response,
+            invocation,
+            return_value,
+            &events,
+        );
     }
 
     Ok(Outcome::Found)
@@ -89,9 +103,7 @@ fn find_invocation(response: &GetTransactionResponse) -> Call {
         }),
         Some(HostFunction::CreateContract(_)) => Call::OtherHostFunction("CreateContract"),
         Some(HostFunction::CreateContractV2(_)) => Call::OtherHostFunction("CreateContractV2"),
-        Some(HostFunction::UploadContractWasm(_)) => {
-            Call::OtherHostFunction("UploadContractWasm")
-        }
+        Some(HostFunction::UploadContractWasm(_)) => Call::OtherHostFunction("UploadContractWasm"),
         None => Call::NonSoroban,
     }
 }

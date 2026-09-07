@@ -26,7 +26,11 @@ pub enum RpcFailure {
 
     /// We reached the RPC and it answered with a JSON-RPC error. The server is fine; it's
     /// telling us the request was wrong or couldn't be served.
-    Rpc { url: String, code: i32, message: String },
+    Rpc {
+        url: String,
+        code: i32,
+        message: String,
+    },
 
     /// We got a response but couldn't turn it into something meaningful. Either the XDR
     /// didn't decode or the JSON wasn't the shape we expected — usually a version skew
@@ -42,7 +46,10 @@ impl RpcFailure {
     pub fn classify(err: ClientError, url: &str) -> Self {
         let url = url.to_string();
         match err {
-            ClientError::InvalidRpc(e) => RpcFailure::BadUrl { url, reason: e.to_string() },
+            ClientError::InvalidRpc(e) => RpcFailure::BadUrl {
+                url,
+                reason: e.to_string(),
+            },
 
             // Note: the payload here is a `reqwest::Error`, but `reqwest` is only a
             // transitive dependency. Calling its methods needs no import; naming its type
@@ -82,7 +89,10 @@ impl RpcFailure {
                 detail: format!("could not parse the response body: {}", summarize(&what)),
             },
 
-            other => RpcFailure::Other { url, detail: other.to_string() },
+            other => RpcFailure::Other {
+                url,
+                detail: other.to_string(),
+            },
         }
     }
 }
@@ -192,7 +202,10 @@ mod tests {
 
     #[test]
     fn summarize_collapses_whitespace() {
-        assert_eq!(summarize("  <html>\n  <body>\ttext  "), "<html> <body> text");
+        assert_eq!(
+            summarize("  <html>\n  <body>\ttext  "),
+            "<html> <body> text"
+        );
     }
 
     #[test]

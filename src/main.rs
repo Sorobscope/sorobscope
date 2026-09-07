@@ -44,8 +44,7 @@ async fn run(args: Cli) -> anyhow::Result<Outcome> {
             since_ledger,
             follow,
         } => {
-            commands::events::run(&connection, &contract_id, since_ledger, follow, args.json)
-                .await
+            commands::events::run(&connection, &contract_id, since_ledger, follow, args.json).await
         }
 
         Commands::Entry {

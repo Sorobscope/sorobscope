@@ -76,7 +76,13 @@ gated!(entry_reads_a_persistent_key, {
 });
 
 gated!(entry_json_is_machine_readable, {
-    let out = run(&["entry", PERSISTENT_FIXTURE, "--key-symbol", "COUNTER", "--json"]);
+    let out = run(&[
+        "entry",
+        PERSISTENT_FIXTURE,
+        "--key-symbol",
+        "COUNTER",
+        "--json",
+    ]);
     let text = stdout(&out);
 
     let parsed: serde_json::Value =
@@ -84,7 +90,10 @@ gated!(entry_json_is_machine_readable, {
 
     assert_eq!(parsed["durability"], "persistent");
     assert_eq!(parsed["key"], "COUNTER");
-    assert!(parsed["liveUntilLedger"].is_number(), "TTL missing: {parsed}");
+    assert!(
+        parsed["liveUntilLedger"].is_number(),
+        "TTL missing: {parsed}"
+    );
     // The value is a counter that other tests bump, so assert its type, not its value.
     assert!(parsed["value"].is_number(), "value not decoded: {parsed}");
 });
@@ -98,17 +107,21 @@ gated!(entry_reports_a_missing_key_as_exit_2, {
     );
 });
 
-/// The case a bare Symbol ledger key cannot reach on its own.
-///
-/// `stellar contract read` fails outright on this contract ("no matching contract data
-/// entries were found") because there is no standalone entry to find. `entry` has to fall
-/// back to the contract instance's storage map, which is the whole reason that fallback
-/// exists — most contracts store state this way.
+// The case a bare Symbol ledger key cannot reach on its own.
+//
+// `stellar contract read` fails outright on this contract ("no matching contract data
+// entries were found") because there is no standalone entry to find. `entry` has to fall
+// back to the contract instance's storage map, which is the whole reason that fallback
+// exists — most contracts store state this way.
 gated!(entry_finds_a_value_held_in_instance_storage, {
     let out = run(&["entry", INSTANCE_FIXTURE, "--key-symbol", "COUNTER"]);
     let text = stdout(&out);
 
-    assert_eq!(out.status.code(), Some(0), "instance lookup failed:\n{text}");
+    assert_eq!(
+        out.status.code(),
+        Some(0),
+        "instance lookup failed:\n{text}"
+    );
     assert!(
         text.contains("instance"),
         "durability should be reported as instance:\n{text}"
@@ -186,8 +199,8 @@ gated!(events_json_emits_one_object_per_line, {
     }
 });
 
-/// A broken endpoint must fail clearly rather than panicking, and must be distinguishable
-/// from a successful lookup that found nothing.
+// A broken endpoint must fail clearly rather than panicking, and must be distinguishable
+// from a successful lookup that found nothing.
 gated!(an_unreachable_endpoint_exits_1_not_2, {
     let out = run(&[
         "entry",
@@ -198,7 +211,11 @@ gated!(an_unreachable_endpoint_exits_1_not_2, {
         "http://127.0.0.1:1",
     ]);
 
-    assert_eq!(out.status.code(), Some(1), "transport failure must be exit 1");
+    assert_eq!(
+        out.status.code(),
+        Some(1),
+        "transport failure must be exit 1"
+    );
 
     let stderr = String::from_utf8_lossy(&out.stderr);
     assert!(
@@ -216,7 +233,14 @@ gated!(an_unreachable_endpoint_exits_1_not_2, {
 #[test]
 fn mainnet_requires_an_explicit_rpc_url() {
     // No network access needed: this fails before any request is made.
-    let out = run(&["entry", PERSISTENT_FIXTURE, "--key-symbol", "COUNTER", "--network", "mainnet"]);
+    let out = run(&[
+        "entry",
+        PERSISTENT_FIXTURE,
+        "--key-symbol",
+        "COUNTER",
+        "--network",
+        "mainnet",
+    ]);
 
     assert_eq!(out.status.code(), Some(1));
     let stderr = String::from_utf8_lossy(&out.stderr);

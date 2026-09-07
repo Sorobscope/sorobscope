@@ -6,7 +6,7 @@
 
 use std::str::FromStr;
 
-use anyhow::{anyhow, Context};
+use anyhow::{Context, anyhow};
 use serde_json::json;
 use soroban_client::xdr::{
     ContractDataDurability, LedgerEntryData, LedgerKey, LedgerKeyContractData, Limits, ReadXdr,
@@ -14,9 +14,9 @@ use soroban_client::xdr::{
 };
 
 use crate::decode::{guard, scval_to_json, scval_to_readable};
+use crate::network::Connection;
 use crate::outcome::Outcome;
 use crate::style;
-use crate::network::Connection;
 
 /// Ledgers close about every 5 seconds. Used only to put a human-readable figure next to
 /// a TTL; it is an approximation, and labelled as one in the output.
@@ -70,11 +70,10 @@ pub async fn run(
 
         if data.key == ScVal::LedgerKeyContractInstance {
             if let ScVal::ContractInstance(instance) = &data.val {
-                instance_storage = instance.storage.as_ref().map(|m| {
-                    m.0.iter()
-                        .map(|e| (e.key.clone(), e.val.clone()))
-                        .collect()
-                });
+                instance_storage = instance
+                    .storage
+                    .as_ref()
+                    .map(|m| m.0.iter().map(|e| (e.key.clone(), e.val.clone())).collect());
             }
             continue;
         }
@@ -95,18 +94,17 @@ pub async fn run(
     // Fall back to the contract instance's own storage map. A contract using
     // `env.storage().instance()` keeps its values inside the instance entry rather than as
     // addressable entries of their own, so the direct lookup above legitimately misses it.
-    if found.is_none() {
-        if let Some(value) = instance_storage
+    if found.is_none()
+        && let Some(value) = instance_storage
             .as_deref()
             .and_then(|storage| find_in_instance_storage(storage, &key))
-        {
-            found = Some(Found {
-                value,
-                durability: "instance",
-                last_modified: None,
-                live_until: None,
-            });
-        }
+    {
+        found = Some(Found {
+            value,
+            durability: "instance",
+            last_modified: None,
+            live_until: None,
+        });
     }
 
     match found {
@@ -349,7 +347,10 @@ mod tests {
 
     #[test]
     fn instance_storage_lookup_matches_on_key() {
-        let storage = vec![(sym("OTHER"), ScVal::U32(1)), (sym("COUNTER"), ScVal::U32(9))];
+        let storage = vec![
+            (sym("OTHER"), ScVal::U32(1)),
+            (sym("COUNTER"), ScVal::U32(9)),
+        ];
         assert_eq!(
             find_in_instance_storage(&storage, &sym("COUNTER")),
             Some(ScVal::U32(9))
@@ -395,7 +396,9 @@ mod tests {
 
     #[test]
     fn account_addresses_are_rejected_as_contracts() {
-        assert!(parse_contract("GCTWQOEUM67COLWIAVTMBE2J2NG7GHCBHFVWIOS6XDVXCJIORSYG3GZB").is_err());
+        assert!(
+            parse_contract("GCTWQOEUM67COLWIAVTMBE2J2NG7GHCBHFVWIOS6XDVXCJIORSYG3GZB").is_err()
+        );
         assert!(parse_contract("CB6L3DIL5IHX7PCVHGJKYDZROSEHS5CGHKSMD6CGKV5HW7RDXY5NOBCX").is_ok());
         assert!(parse_contract("not-an-address").is_err());
     }

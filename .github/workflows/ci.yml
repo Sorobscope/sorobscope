@@ -1,0 +1,45 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  # Allow a manual run, which is handy when checking a toolchain bump.
+  workflow_dispatch:
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  check:
+    name: build, test, fmt, clippy
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+
+      # Caches the registry and build output, keyed on Cargo.lock. The soroban and
+      # stellar-xdr tree is large enough that a cold build dominates the run.
+      - name: Cache cargo
+        uses: Swatinem/rust-cache@v2
+
+      - name: Formatting
+        run: cargo fmt --all --check
+
+      - name: Clippy
+        run: cargo clippy --all-targets -- -D warnings
+
+      - name: Build
+        run: cargo build --verbose
+
+      # Only the unit suite runs here. tests/integration_testnet.rs talks to real testnet
+      # and is gated behind SOROBSCOPE_TEST_NETWORK, which is deliberately NOT set: a flaky
+      # public endpoint or an expired fixture must never fail an unrelated pull request.
+      # Those tests still compile here, which is most of their value in CI.
+      - name: Unit tests
+        run: cargo test --verbose

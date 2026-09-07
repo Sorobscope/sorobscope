@@ -91,11 +91,13 @@ pub enum Commands {
     },
 
     /// Decode a transaction and the events it emitted
-    #[command(long_about = "Decode a transaction: the contract invoked, the function \
+    #[command(
+        long_about = "Decode a transaction: the contract invoked, the function \
                             called, its arguments and result, and any events emitted.\n\n\
                             Subject to the same RPC retention window as `events` — a \
                             transaction older than the endpoint retains cannot be \
-                            fetched, even though it really happened.")]
+                            fetched, even though it really happened."
+    )]
     Tx {
         /// Transaction hash (64-character hex)
         hash: String,

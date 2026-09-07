@@ -48,9 +48,18 @@ pub fn init(choice: ColorChoice) {
     let suppressed = std::env::var_os("NO_COLOR").is_some_and(|v| !v.is_empty());
 
     let enabled = match choice {
-        ColorChoice::Never => Enabled { stdout: false, stderr: false },
-        ColorChoice::Always => Enabled { stdout: true, stderr: true },
-        ColorChoice::Auto if suppressed => Enabled { stdout: false, stderr: false },
+        ColorChoice::Never => Enabled {
+            stdout: false,
+            stderr: false,
+        },
+        ColorChoice::Always => Enabled {
+            stdout: true,
+            stderr: true,
+        },
+        ColorChoice::Auto if suppressed => Enabled {
+            stdout: false,
+            stderr: false,
+        },
         ColorChoice::Auto => Enabled {
             stdout: std::io::stdout().is_terminal(),
             stderr: std::io::stderr().is_terminal(),

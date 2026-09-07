@@ -15,7 +15,7 @@
 //!   can be any `ScVal`, which JSON object keys cannot represent, so mixed-key maps become
 //!   an array of `{"key":…,"value":…}` pairs instead of being silently stringified.
 
-use serde_json::{json, Map as JsonMap, Value};
+use serde_json::{Map as JsonMap, Value, json};
 use soroban_client::xdr::{Int128Parts, ScVal, UInt128Parts};
 
 /// Render an `ScVal` as a single readable line.
@@ -123,9 +123,7 @@ pub fn scval_to_json(v: &ScVal) -> Value {
         ScVal::Symbol(s) => json!(s.0.to_utf8_string_lossy()),
         ScVal::Address(a) => json!(a.to_string()),
 
-        ScVal::Vec(Some(items)) => {
-            Value::Array(items.0.iter().map(scval_to_json).collect())
-        }
+        ScVal::Vec(Some(items)) => Value::Array(items.0.iter().map(scval_to_json).collect()),
         ScVal::Vec(None) => Value::Array(Vec::new()),
 
         ScVal::Map(Some(entries)) => {
@@ -280,14 +278,17 @@ mod tests {
     #[test]
     fn i128_respects_the_unsigned_low_half() {
         // hi = 0, lo = u64::MAX is the case a naive `lo as i64` cast reports as -1.
-        let big = Int128Parts { hi: 0, lo: u64::MAX };
-        assert_eq!(
-            scval_to_readable(&ScVal::I128(big)),
-            "18446744073709551615"
-        );
+        let big = Int128Parts {
+            hi: 0,
+            lo: u64::MAX,
+        };
+        assert_eq!(scval_to_readable(&ScVal::I128(big)), "18446744073709551615");
 
         // All bits set is genuinely -1.
-        let minus_one = Int128Parts { hi: -1, lo: u64::MAX };
+        let minus_one = Int128Parts {
+            hi: -1,
+            lo: u64::MAX,
+        };
         assert_eq!(scval_to_readable(&ScVal::I128(minus_one)), "-1");
 
         let minus_two_64 = Int128Parts { hi: -1, lo: 0 };
@@ -303,7 +304,10 @@ mod tests {
         assert_eq!(scval_to_json(&ScVal::I32(-7)), json!(-7));
 
         // Wider than 2^53, so a JSON number would lose precision in most consumers.
-        assert_eq!(scval_to_json(&ScVal::U64(u64::MAX)), json!("18446744073709551615"));
+        assert_eq!(
+            scval_to_json(&ScVal::U64(u64::MAX)),
+            json!("18446744073709551615")
+        );
         assert!(scval_to_json(&ScVal::U64(1)).is_string());
     }
 
@@ -318,10 +322,7 @@ mod tests {
     #[test]
     fn json_maps_with_non_text_keys_become_pair_arrays() {
         let m = map_of(vec![(ScVal::U32(1), sym("one"))]);
-        assert_eq!(
-            scval_to_json(&m),
-            json!([{"key": 1, "value": "one"}])
-        );
+        assert_eq!(scval_to_json(&m), json!([{"key": 1, "value": "one"}]));
     }
 
     #[test]
@@ -370,8 +371,8 @@ mod tests {
     /// rather than as raw bytes.
     #[test]
     fn addresses_render_as_strkey() {
-        use std::str::FromStr;
         use soroban_client::xdr::ScAddress;
+        use std::str::FromStr;
 
         let account = "GCTWQOEUM67COLWIAVTMBE2J2NG7GHCBHFVWIOS6XDVXCJIORSYG3GZB";
         let v = ScVal::Address(ScAddress::from_str(account).unwrap());
@@ -398,7 +399,10 @@ mod tests {
 
     #[test]
     fn i64_keeps_its_sign() {
-        assert_eq!(scval_to_readable(&ScVal::I64(-9_223_372_036_854_775_808)), "-9223372036854775808");
+        assert_eq!(
+            scval_to_readable(&ScVal::I64(-9_223_372_036_854_775_808)),
+            "-9223372036854775808"
+        );
         assert_eq!(scval_to_json(&ScVal::I64(-1)), json!("-1"));
     }
 
