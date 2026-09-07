@@ -163,20 +163,45 @@ pub fn scval_to_json(v: &ScVal) -> Value {
     }
 }
 
+/// Install the panic hook that [`guard`] relies on. Call once, at startup.
+///
+/// The alternative — swapping the global hook around every guarded call — races: this is a
+/// multi-threaded runtime, so an unrelated panic landing in that window would have its
+/// message swallowed, and two concurrent guards would fight over the hook. Installing one
+/// hook that consults a thread-local keeps the suppression scoped to the thread that asked
+/// for it, and leaves every other panic reporting normally.
+pub fn install_panic_hook() {
+    let default = std::panic::take_hook();
+    std::panic::set_hook(Box::new(move |info| {
+        if GUARDED.with(|g| g.get()) {
+            // Expected: a guarded XDR decode failed. The caller renders <undecodable>.
+            return;
+        }
+        default(info);
+    }));
+}
+
+thread_local! {
+    /// Set only while a guarded call is running on this thread.
+    static GUARDED: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
+}
+
 /// Run a decoding accessor without letting it take the process down.
 ///
 /// Several soroban-client accessors — `EventResponse::topic()`/`value()`,
 /// `LedgerEntryResult::to_key()`/`to_data()` — decode base64 XDR with `.expect()`, and the
-/// raw fields behind them are private — so there is no non-panicking path to that data through
-/// the crate's public API. One malformed event would otherwise abort a `--follow` session
-/// that is working perfectly well; catching the unwind downgrades it to one line marked
-/// `<undecodable>`. The panic hook is silenced for the duration so the crate's message
-/// doesn't land in the middle of the output.
+/// raw fields behind them are private, so there is no non-panicking path to that data
+/// through the crate's public API. One malformed event would otherwise abort a `--follow`
+/// session that is working perfectly well; catching the unwind downgrades it to a single
+/// line marked `<undecodable>`.
+///
+/// The panic message is suppressed via the hook installed by [`install_panic_hook`], so the
+/// crate's `expect` text doesn't land in the middle of otherwise good output. If that hook
+/// was never installed the message still prints — noisy, but never wrong.
 pub fn guard<T>(f: impl FnOnce() -> T) -> Option<T> {
-    let previous = std::panic::take_hook();
-    std::panic::set_hook(Box::new(|_| {}));
+    GUARDED.with(|g| g.set(true));
     let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(f));
-    std::panic::set_hook(previous);
+    GUARDED.with(|g| g.set(false));
     result.ok()
 }
 
@@ -404,6 +429,20 @@ mod tests {
             "-9223372036854775808"
         );
         assert_eq!(scval_to_json(&ScVal::I64(-1)), json!("-1"));
+    }
+
+    #[test]
+    fn guard_catches_a_panic_and_reports_none() {
+        assert_eq!(guard(|| 7), Some(7));
+        assert_eq!(guard(|| panic!("simulated bad XDR")), None::<()>);
+    }
+
+    /// The suppression flag must be cleared even when the guarded call panics, or every
+    /// later panic on this thread would be silently swallowed.
+    #[test]
+    fn guard_clears_its_flag_after_a_panic() {
+        let _ = guard(|| panic!("simulated bad XDR"));
+        assert!(!GUARDED.with(|g| g.get()), "flag left set after a panic");
     }
 
     #[test]

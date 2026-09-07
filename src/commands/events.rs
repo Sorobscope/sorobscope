@@ -24,6 +24,17 @@ const POLL_INTERVAL: Duration = Duration::from_secs(5);
 /// Events per request.
 const PAGE_LIMIT: u32 = 100;
 
+/// How many transport failures in a row `--follow` will absorb before giving up.
+///
+/// A watch session is meant to outlive a dropped connection — that is the whole point of
+/// leaving it running — so a blip must not end it. But it should still stop rather than
+/// spin forever against an endpoint that has genuinely gone away.
+const MAX_CONSECUTIVE_FAILURES: u32 = 5;
+
+/// Backoff between retries, capped. Doubles each consecutive failure.
+const RETRY_BASE: Duration = Duration::from_secs(2);
+const RETRY_CAP: Duration = Duration::from_secs(30);
+
 pub async fn run(
     connection: &Connection,
     contract_id: &str,
@@ -65,6 +76,7 @@ pub async fn run(
     let mut cursor: Option<String> = None;
     let mut next_from = start;
     let mut seen = 0usize;
+    let mut failures = 0u32;
 
     loop {
         // Neither Pagination nor EventFilter is Clone, so both are rebuilt each pass.
@@ -75,11 +87,46 @@ pub async fn run(
         };
         let filter = EventFilter::new(EventType::Contract).contract(contract_id);
 
-        let response = connection
+        let response = match connection
             .server
             .get_events(page, vec![filter], PAGE_LIMIT)
             .await
-            .map_err(|e| connection.fail(e))?;
+            .map_err(|e| connection.fail(e))
+        {
+            Ok(response) => {
+                failures = 0;
+                response
+            }
+
+            // Under --follow, ride out a dropped connection rather than ending a session
+            // the user expects to leave running. Anything the endpoint actually answered —
+            // a rejected request, an undecodable response — is not retried, because the
+            // next attempt would fail identically and hide a real problem behind a delay.
+            Err(e) if follow && e.is_transient() && failures < MAX_CONSECUTIVE_FAILURES => {
+                failures += 1;
+                let wait = backoff(failures);
+
+                if !json {
+                    eprintln!(
+                        "{} lost contact with the endpoint (attempt {failures} of {MAX_CONSECUTIVE_FAILURES}); retrying in {}s",
+                        style::warn("warning:"),
+                        wait.as_secs()
+                    );
+                }
+
+                tokio::select! {
+                    _ = tokio::time::sleep(wait) => continue,
+                    _ = tokio::signal::ctrl_c() => {
+                        if !json {
+                            println!("\nstopped.");
+                        }
+                        return Ok(Outcome::Found);
+                    }
+                }
+            }
+
+            Err(e) => return Err(e.into()),
+        };
 
         for event in &response.events {
             if json {
@@ -204,6 +251,12 @@ fn decode_value_json(event: &EventResponse) -> serde_json::Value {
     guard(|| scval_to_json(&event.value())).unwrap_or_else(|| json!("<undecodable>"))
 }
 
+/// Exponential backoff, capped, for a retry after a dropped connection.
+fn backoff(attempt: u32) -> Duration {
+    let doubled = RETRY_BASE.saturating_mul(1u32 << attempt.min(5).saturating_sub(1));
+    doubled.min(RETRY_CAP)
+}
+
 /// Pull the ledger sequence out of a paging cursor.
 ///
 /// The cursor is `"<toid>-<event index>"`, and a TOID packs the ledger sequence into its
@@ -213,4 +266,34 @@ fn decode_value_json(event: &EventResponse) -> serde_json::Value {
 fn cursor_ledger(cursor: &str) -> Option<u32> {
     let toid: u64 = cursor.split('-').next()?.parse().ok()?;
     Some((toid >> 32) as u32)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn backoff_grows_then_stops_growing() {
+        assert_eq!(backoff(1), Duration::from_secs(2));
+        assert_eq!(backoff(2), Duration::from_secs(4));
+        assert_eq!(backoff(3), Duration::from_secs(8));
+        // Capped, so a long outage doesn't push the next attempt hours away.
+        assert!(backoff(20) <= RETRY_CAP);
+    }
+
+    #[test]
+    fn cursor_ledger_reads_the_high_bits_of_a_toid() {
+        // 4429700 << 32, the shape the RPC actually returns.
+        let toid: u64 = 4_429_700u64 << 32;
+        assert_eq!(
+            cursor_ledger(&format!("{toid}-0000000000")),
+            Some(4_429_700)
+        );
+    }
+
+    #[test]
+    fn cursor_ledger_rejects_nonsense() {
+        assert_eq!(cursor_ledger("not-a-cursor"), None);
+        assert_eq!(cursor_ledger(""), None);
+    }
 }

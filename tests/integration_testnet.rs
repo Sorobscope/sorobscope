@@ -14,6 +14,12 @@
 //! Assertions deliberately check the *shape* of the output rather than exact text, so
 //! formatting changes don't break the suite. Values that drift on their own — the counter,
 //! the current ledger — are never asserted to be a specific number.
+//!
+//! For the same reason these tests never pass a hard-coded `--since-ledger`. The RPC's
+//! retention window advances continuously, so any fixed ledger number eventually falls out
+//! of range and the endpoint rejects the request — a test failure that says nothing about
+//! the tool. They use the default lookback instead, and treat "no events in the window" as
+//! a skip rather than a failure, since a quiet fixture is not a defect.
 
 use std::process::{Command, Output};
 
@@ -26,7 +32,7 @@ const INSTANCE_FIXTURE: &str = "CAGHKC2CYSLSL5J7C4OHEN26YKRH5BND7SGBTHUVZYBRS6OW
 
 /// A known transaction against that fixture — the `tag` call, which carries an Address
 /// argument and a tuple event payload, so it exercises more of the decoder than a bare u32.
-const KNOWN_TX: &str = "57cc3d10f015741ced4ee558c3f36cf3cb7e6253f2c32d35982c8e493c849ab3";
+const KNOWN_TX: &str = "fd2eae025cccfdc0ed6d6444e5f1646ad7a4b85ccd2588e646575cf67029b6ac";
 
 /// Skip unless explicitly switched on. Returns true when the test should run.
 fn enabled() -> bool {
@@ -161,7 +167,7 @@ gated!(tx_reports_an_unknown_hash_as_exit_2, {
 });
 
 gated!(events_decodes_rather_than_relaying_base64, {
-    let out = run(&["events", PERSISTENT_FIXTURE, "--since-ledger", "4429700"]);
+    let out = run(&["events", PERSISTENT_FIXTURE]);
     let text = stdout(&out);
 
     assert_eq!(out.status.code(), Some(0), "run failed:\n{text}");
@@ -169,7 +175,11 @@ gated!(events_decodes_rather_than_relaying_base64, {
     // If the fixture's events have aged out of retention there is nothing to assert on,
     // and that is a property of the endpoint rather than a failure of this tool.
     if text.contains("No events found") {
-        eprintln!("fixture events are outside the retention window; nothing to assert");
+        eprintln!(
+            "fixture has been quiet within the default window; nothing to assert. \
+             Re-invoke it to refresh: stellar contract invoke --id {PERSISTENT_FIXTURE} \
+             --source sorobscope-dev --network testnet -- increment"
+        );
         return;
     }
 
@@ -182,13 +192,7 @@ gated!(events_decodes_rather_than_relaying_base64, {
 });
 
 gated!(events_json_emits_one_object_per_line, {
-    let out = run(&[
-        "events",
-        PERSISTENT_FIXTURE,
-        "--since-ledger",
-        "4429700",
-        "--json",
-    ]);
+    let out = run(&["events", PERSISTENT_FIXTURE, "--json"]);
     let text = stdout(&out);
 
     for line in text.lines().filter(|l| !l.trim().is_empty()) {

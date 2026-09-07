@@ -26,6 +26,38 @@ deliberately left to the maintainer, since crates.io allows yanking but never de
 **Attribution note:** commits carry no `Co-Authored-By` trailer, at the maintainer's
 request. Do not add one unless explicitly asked.
 
+### Production-readiness pass (post-Phase 7)
+
+Four things were tightened after the Wave-readiness review:
+
+- **`--follow` survives a dropped connection.** It previously aborted on the first
+  transport error — in the one command meant to run for hours. It now retries with capped
+  backoff and gives up after five consecutive failures. Only `RpcFailure::is_transient()`
+  cases retry: a rejected request or an undecodable response fails identically on a retry,
+  so retrying those would hide a real error behind a delay.
+- **`guard` no longer swaps the global panic hook.** The old version took and restored the
+  hook around every guarded call, which races under a multi-threaded runtime — an unrelated
+  panic in that window would be swallowed. A single hook is now installed at startup
+  (`decode::install_panic_hook`) and consults a thread-local flag.
+- **MSRV declared as 1.88**, bound by let-chains in `commands/entry.rs`.
+- **`liveUntilLedgerSeq` of 0 means archived, not ledger zero.** The fixture's persistent
+  entry expired mid-project and exposed this: the tool reported "live until ledger 0
+  (EXPIRED — 4552367 ledgers ago)", doing arithmetic against a sentinel. It now reports the
+  entry as archived, and `--json` carries an `archived` flag with a null TTL.
+
+`entry` also now reports the **instance entry's real TTL** for values held in instance
+storage, instead of saying they share a TTL it declined to fetch — that entry was already
+in hand from the same batched call.
+
+**Test-fixture rot:** the integration tests must never hard-code a `--since-ledger`. The
+retention window advances continuously, so any fixed ledger number eventually falls out of
+range and the endpoint rejects the request — a failure that says nothing about the tool.
+This bit once already. They use the default lookback and treat a quiet window as a skip.
+
+**Still not done:** the tool has never been run against mainnet. There is no free public
+mainnet RPC to point it at, so this needs an endpoint from the maintainer. Until then,
+mainnet behaviour is unverified.
+
 Read `docs/ROADMAP.md` next. Update this section as phases complete.
 
 Phase 1 built `src/network.rs` (`Connection::open` — the one place a `Server` is

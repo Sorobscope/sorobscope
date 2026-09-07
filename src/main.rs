@@ -18,8 +18,9 @@ use crate::outcome::Outcome;
 async fn main() -> ExitCode {
     let args = Cli::parse();
 
-    // Decided once, before anything prints.
+    // Both decided once, before anything prints.
     style::init(args.color);
+    decode::install_panic_hook();
 
     match run(args).await {
         Ok(Outcome::Found) => ExitCode::SUCCESS,

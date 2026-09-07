@@ -97,6 +97,18 @@ impl RpcFailure {
     }
 }
 
+impl RpcFailure {
+    /// Whether retrying the same request could plausibly succeed.
+    ///
+    /// Only transport failures qualify. A rejected request or an undecodable response will
+    /// fail identically no matter how many times it is sent, and retrying those would turn
+    /// a clear error into a slow one. This is what lets `--follow` ride out a dropped
+    /// connection without swallowing a real problem.
+    pub fn is_transient(&self) -> bool {
+        matches!(self, RpcFailure::Unreachable { .. })
+    }
+}
+
 /// How much of an unparseable response body to echo back.
 const BODY_EXCERPT: usize = 160;
 
@@ -199,6 +211,36 @@ impl std::error::Error for RpcFailure {}
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn only_transport_failures_are_worth_retrying() {
+        let transient = RpcFailure::Unreachable {
+            url: "https://example.test".into(),
+            detail: "connection reset".into(),
+        };
+        assert!(transient.is_transient());
+
+        // The endpoint answered; sending the same request again changes nothing.
+        let rejected = RpcFailure::Rpc {
+            url: "https://example.test".into(),
+            code: -32600,
+            message: "startLedger must be within the ledger range".into(),
+        };
+        assert!(!rejected.is_transient());
+
+        let undecodable = RpcFailure::Decode {
+            url: "https://example.test".into(),
+            detail: "not JSON".into(),
+        };
+        assert!(!undecodable.is_transient());
+
+        assert!(
+            !RpcFailure::NoDefaultEndpoint {
+                network: Network::Mainnet
+            }
+            .is_transient()
+        );
+    }
 
     #[test]
     fn summarize_collapses_whitespace() {

@@ -2,6 +2,8 @@
 name = "sorobscope"
 version = "0.1.0"
 edition = "2024"
+# Bound by let-chains (used in commands/entry.rs), stable since 1.88.
+rust-version = "1.88"
 description = "Human-readable Soroban RPC inspection: decoded contract events, storage entries, and transaction summaries. Read-only."
 license = "Apache-2.0"
 repository = "https://github.com/Sorobscope/sorobscope"

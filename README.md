@@ -39,31 +39,33 @@ cargo install --path .
 ### `events` — working
 
 ```console
-$ sorobscope events CB6L3DIL5IHX7PCVHGJKYDZROSEHS5CGHKSMD6CGKV5HW7RDXY5NOBCX
+$ sorobscope events CB6L3DIL5IHX7PCVHGJKYDZROSEHS5CGHKSMD6CGKV5HW7RDXY5NOBCX --since-ledger 4552430
 events for CB6L3DIL5IHX7PCVHGJKYDZROSEHS5CGHKSMD6CGKV5HW7RDXY5NOBCX on testnet
-searching from ledger 4422004 to 4439284 (last ~17280 ledgers; pass --since-ledger to widen)
+searching from ledger 4552430 to 4552445
 
-ledger 4429704  2026-08-31T10:28:27Z
+ledger 4552438  2026-09-07T12:56:17Z
   topics      [counter, inc]
-  data        4
-  tx          3e27afda4981783376f7c9160e6aa54a8b6a1cff7c1f9acd207ddf3b4da410a0
+  data        5
+  tx          a0c02515e6fdbaca85e22804485584744da489f9ba384932f9ef7a64e396ff07
 
-ledger 4429706  2026-08-31T10:28:37Z
+ledger 4552441  2026-09-07T12:56:32Z
   topics      [counter, tag, GCTWQOEUM67COLWIAVTMBE2J2NG7GHCBHFVWIOS6XDVXCJIORSYG3GZB]
-  data        [live, 4, GCTWQOEUM67COLWIAVTMBE2J2NG7GHCBHFVWIOS6XDVXCJIORSYG3GZB]
-  tx          57cc3d10f015741ced4ee558c3f36cf3cb7e6253f2c32d35982c8e493c849ab3
+  data        [fresh, 5, GCTWQOEUM67COLWIAVTMBE2J2NG7GHCBHFVWIOS6XDVXCJIORSYG3GZB]
+  tx          fd2eae025cccfdc0ed6d6444e5f1646ad7a4b85ccd2588e646575cf67029b6ac
 ```
 
-`--follow` polls every 5s and streams new events until Ctrl-C. `--since-ledger N` widens
-the search past the default ~1 day window.
+`--follow` polls every 5s and streams new events until Ctrl-C. It rides out a dropped
+connection with a capped backoff rather than ending a session you meant to leave running,
+and gives up only after five consecutive transport failures. `--since-ledger N` widens the
+search past the default ~1 day window.
 
 With `--json`, events are emitted one JSON object per line, so `--follow` pipes straight
 into `jq` without buffering an array that never ends:
 
 ```console
 $ sorobscope events CB6L3DIL5IHX7PCVHGJKYDZROSEHS5CGHKSMD6CGKV5HW7RDXY5NOBCX --json | jq -c '{ledger, topics, data}'
-{"ledger":4429704,"topics":["counter","inc"],"data":4}
-{"ledger":4429706,"topics":["counter","tag","GCTWQOEUM67COLWIAVTMBE2J2NG7GHCBHFVWIOS6XDVXCJIORSYG3GZB"],"data":["live",4,"GCTWQOEUM67COLWIAVTMBE2J2NG7GHCBHFVWIOS6XDVXCJIORSYG3GZB"]}
+{"ledger":4552438,"topics":["counter","inc"],"data":5}
+{"ledger":4552441,"topics":["counter","tag","GCTWQOEUM67COLWIAVTMBE2J2NG7GHCBHFVWIOS6XDVXCJIORSYG3GZB"],"data":["fresh",5,"GCTWQOEUM67COLWIAVTMBE2J2NG7GHCBHFVWIOS6XDVXCJIORSYG3GZB"]}
 ```
 
 ### `entry` — working
@@ -76,15 +78,15 @@ $ sorobscope entry CB6L3DIL5IHX7PCVHGJKYDZROSEHS5CGHKSMD6CGKV5HW7RDXY5NOBCX --ke
 entry for CB6L3DIL5IHX7PCVHGJKYDZROSEHS5CGHKSMD6CGKV5HW7RDXY5NOBCX on testnet
   key         COUNTER
   durability  persistent
-  value       4
-  updated     ledger 4429704
-  live until  ledger 4483568  (44283 ledgers away, ~2d 13h)
-  as of       ledger 4439285
+  value       5
+  updated     ledger 4552438
+  live until  ledger 4673397  (120951 ledgers away, ~6d 23h)
+  as of       ledger 4552446
 ```
 
 ```console
 $ sorobscope entry CB6L3DIL5IHX7PCVHGJKYDZROSEHS5CGHKSMD6CGKV5HW7RDXY5NOBCX --key-symbol COUNTER --json
-{"contractId":"CB6L3DIL5IHX7PCVHGJKYDZROSEHS5CGHKSMD6CGKV5HW7RDXY5NOBCX","durability":"persistent","key":"COUNTER","lastModifiedLedger":4429704,"latestLedger":4439285,"ledgersRemaining":44283,"liveUntilLedger":4483568,"network":"testnet","value":4}
+{"archived":false,"contractId":"CB6L3DIL5IHX7PCVHGJKYDZROSEHS5CGHKSMD6CGKV5HW7RDXY5NOBCX","durability":"persistent","key":"COUNTER","lastModifiedLedger":4552438,"latestLedger":4552446,"ledgersRemaining":120951,"liveUntilLedger":4673397,"network":"testnet","value":5}
 ```
 
 The TTL line is the part raw tooling makes you work out for yourself: an entry about to
@@ -119,29 +121,30 @@ entry for CAGHKC2CYSLSL5J7C4OHEN26YKRH5BND7SGBTHUVZYBRS6OWUW5RLTAY on testnet
   key         COUNTER
   durability  instance
   value       2
-  live until  (tied to the contract instance's own TTL)
-  as of       ledger 4439447
+  updated     ledger 4439436
+  live until  ledger 4560391  (7944 ledgers away, ~11h)
+  as of       ledger 4552447
 
-Found in the contract's instance storage, not as a standalone entry. Values written with env.storage().instance() live inside the contract instance and share its TTL.
+Found in the contract's instance storage, not as a standalone entry. Values written with env.storage().instance() live inside the contract instance, so the TTL above is the instance's own — they expire together.
 ```
 
 ### `tx` — working
 
 ```console
-$ sorobscope tx 57cc3d10f015741ced4ee558c3f36cf3cb7e6253f2c32d35982c8e493c849ab3
-transaction 57cc3d10f015741ced4ee558c3f36cf3cb7e6253f2c32d35982c8e493c849ab3 on testnet
+$ sorobscope tx fd2eae025cccfdc0ed6d6444e5f1646ad7a4b85ccd2588e646575cf67029b6ac
+transaction fd2eae025cccfdc0ed6d6444e5f1646ad7a4b85ccd2588e646575cf67029b6ac on testnet
   status      SUCCESS
-  ledger      4429706
-  at          2026-08-31T10:28:37Z
+  ledger      4552441
+  at          2026-09-07T12:56:32Z
 
   contract    CB6L3DIL5IHX7PCVHGJKYDZROSEHS5CGHKSMD6CGKV5HW7RDXY5NOBCX
   function    tag
   args        GCTWQOEUM67COLWIAVTMBE2J2NG7GHCBHFVWIOS6XDVXCJIORSYG3GZB
-              live
-  returned    4
+              fresh
+  returned    5
 
   events      1
-              [counter, tag, GCTWQOEUM67COLWIAVTMBE2J2NG7GHCBHFVWIOS6XDVXCJIORSYG3GZB]  [live, 4, GCTWQOEUM67COLWIAVTMBE2J2NG7GHCBHFVWIOS6XDVXCJIORSYG3GZB]
+              [counter, tag, GCTWQOEUM67COLWIAVTMBE2J2NG7GHCBHFVWIOS6XDVXCJIORSYG3GZB]  [fresh, 5, GCTWQOEUM67COLWIAVTMBE2J2NG7GHCBHFVWIOS6XDVXCJIORSYG3GZB]
 ```
 
 The contract, function name, and arguments aren't fields the RPC hands back — they live
@@ -154,9 +157,9 @@ cannot tell "no such transaction" apart from "older than I keep":
 $ sorobscope tx 0000000000000000000000000000000000000000000000000000000000000000
 Transaction 0000000000000000000000000000000000000000000000000000000000000000 was not found.
 
-This endpoint currently retains ledgers 4318327 to 4439286.
+This endpoint currently retains ledgers 4431489 to 4552448.
 
-Soroban RPC reports both "no such transaction" and "older than this endpoint retains" the same way, so this could be either. If the transaction closed before ledger 4318327, it is outside the window and no longer queryable here — point --rpc-url at an endpoint with deeper history, or use an indexer.
+Soroban RPC reports both "no such transaction" and "older than this endpoint retains" the same way, so this could be either. If the transaction closed before ledger 4431489, it is outside the window and no longer queryable here — point --rpc-url at an endpoint with deeper history, or use an indexer.
 ```
 
 ## Exit codes

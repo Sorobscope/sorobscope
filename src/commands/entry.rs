@@ -62,6 +62,10 @@ pub async fn run(
     // assuming the RPC preserved our request order.
     let mut found: Option<Found> = None;
     let mut instance_storage: Option<Vec<(ScVal, ScVal)>> = None;
+    // Captured alongside the storage map: a value in instance storage shares the instance
+    // entry's TTL, so this is the real expiry to report for it.
+    let mut instance_ttl: Option<u32> = None;
+    let mut instance_modified: Option<u32> = None;
 
     for result in &entries {
         let Some(LedgerEntryData::ContractData(data)) = guard(|| result.to_data()) else {
@@ -74,6 +78,8 @@ pub async fn run(
                     .storage
                     .as_ref()
                     .map(|m| m.0.iter().map(|e| (e.key.clone(), e.val.clone())).collect());
+                instance_ttl = result.live_until_ledger_seq;
+                instance_modified = result.last_modified_ledger_seq;
             }
             continue;
         }
@@ -102,8 +108,8 @@ pub async fn run(
         found = Some(Found {
             value,
             durability: "instance",
-            last_modified: None,
-            live_until: None,
+            last_modified: instance_modified,
+            live_until: instance_ttl,
         });
     }
 
@@ -134,7 +140,12 @@ fn report(
     latest: u32,
     json: bool,
 ) {
-    let remaining = entry.live_until.map(|until| until as i64 - latest as i64);
+    // A liveUntilLedgerSeq of 0 is not a ledger number: it is how the RPC reports an entry
+    // with no live TTL, having been archived or reclaimed. Subtracting the current ledger
+    // from it would claim the entry expired several million ledgers ago, which is nonsense.
+    let ttl = entry.live_until.filter(|&until| until > 0);
+    let remaining = ttl.map(|until| until as i64 - latest as i64);
+    let archived = entry.live_until == Some(0);
 
     if json {
         println!(
@@ -146,8 +157,9 @@ fn report(
                 "durability": entry.durability,
                 "value": scval_to_json(&entry.value),
                 "lastModifiedLedger": entry.last_modified,
-                "liveUntilLedger": entry.live_until,
+                "liveUntilLedger": ttl,
                 "ledgersRemaining": remaining,
+                "archived": archived,
                 "latestLedger": latest,
             })
         );
@@ -172,7 +184,7 @@ fn report(
     // Surfacing the TTL plainly is the point of this command over raw tooling: an entry
     // that is about to expire looks identical to a healthy one unless someone does this
     // subtraction for you. Colour carries the same signal at a glance.
-    match (entry.live_until, remaining) {
+    match (ttl, remaining) {
         (Some(until), Some(left)) if left > 0 => style::field(
             "live until",
             &format!(
@@ -193,9 +205,16 @@ fn report(
                 ))
             ),
         ),
+        _ if archived => style::field(
+            "live until",
+            &style::bad("expired — the entry has no live TTL and may be archived"),
+        ),
         _ => {
             if entry.durability == "instance" {
-                style::field("live until", "(tied to the contract instance's own TTL)");
+                style::field(
+                    "live until",
+                    &style::muted("(the contract instance reported no TTL)"),
+                );
             }
         }
     }
@@ -208,8 +227,8 @@ fn report(
             "{}",
             style::muted(
                 "Found in the contract's instance storage, not as a standalone entry. Values \
-                 written with env.storage().instance() live inside the contract instance and \
-                 share its TTL."
+                 written with env.storage().instance() live inside the contract instance, so \
+                 the TTL above is the instance's own — they expire together."
             )
         );
     }
