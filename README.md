@@ -9,8 +9,8 @@ Readable output by default, `--json` on every command for piping into other tool
 > ### Status: all three commands work
 >
 > `events`, `entry`, and `tx` all work against real testnet data, and every transcript
-> below is real captured output. What remains is polish, wider testing, and packaging —
-> Phases 5–7 of [`docs/ROADMAP.md`](docs/ROADMAP.md).
+> below is real captured output. Not yet published to crates.io — install from source
+> for now.
 
 ## Why this exists
 

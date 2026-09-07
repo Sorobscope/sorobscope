@@ -24,7 +24,9 @@ and `cargo publish --dry-run` passes, but **nothing has been published** — tha
 deliberately left to the maintainer, since crates.io allows yanking but never deletion.
 
 **Attribution note:** commits carry no `Co-Authored-By` trailer, at the maintainer's
-request. Do not add one unless explicitly asked. Read `docs/ROADMAP.md` next. Update this section as phases complete.
+request. Do not add one unless explicitly asked.
+
+Read `docs/ROADMAP.md` next. Update this section as phases complete.
 
 Phase 1 built `src/network.rs` (`Connection::open` — the one place a `Server` is
 constructed) and `src/error.rs` (`RpcFailure` — translates client errors into distinct
