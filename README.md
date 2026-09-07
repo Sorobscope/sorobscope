@@ -243,6 +243,3 @@ with enough context to pick up cold.
 | [`docs/ROADMAP.md`](docs/ROADMAP.md) | Phased build plan |
 | [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) | Design principles, data flow, RPC limitations, non-goals |
 | [`docs/CLI_SPEC.md`](docs/CLI_SPEC.md) | Command reference and module structure |
-
-Built as a Dev Tooling submission for the
-[Stellar Wave Program](https://www.drips.network/wave/stellar).
