@@ -18,7 +18,7 @@ This started as a mobile reputation-tracking app idea, but moved to a **Dev Tool
 **Phase 7 substantially complete — Phase 8 (Wave submission) is next.** All three commands
 work, styled consistently, with unit and gated integration tests.
 
-The repo is public at https://github.com/adewuyito/sorobscope, licensed Apache-2.0, with
+The repo is public at https://github.com/Sorobscope/sorobscope, licensed Apache-2.0, with
 seven seeded issues covering deferred work. `Cargo.toml` carries full crates.io metadata
 and `cargo publish --dry-run` passes, but **nothing has been published** — that call is
 deliberately left to the maintainer, since crates.io allows yanking but never deletion.

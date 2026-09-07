@@ -1,6 +1,6 @@
 # sorobscope
 
-[![CI](https://github.com/adewuyito/sorobscope/actions/workflows/ci.yml/badge.svg)](https://github.com/adewuyito/sorobscope/actions/workflows/ci.yml)
+[![CI](https://github.com/Sorobscope/sorobscope/actions/workflows/ci.yml/badge.svg)](https://github.com/Sorobscope/sorobscope/actions/workflows/ci.yml)
 [![Licence](https://img.shields.io/badge/licence-Apache--2.0-blue.svg)](LICENSE)
 
 **Human-readable Soroban RPC inspection.** A read-only Rust CLI that decodes contract
@@ -30,7 +30,7 @@ Requires a Rust toolchain. No wasm target or contract tooling needed — this is
 native binary.
 
 ```sh
-git clone https://github.com/adewuyito/sorobscope && cd sorobscope
+git clone https://github.com/Sorobscope/sorobscope && cd sorobscope
 cargo install --path .
 ```
 
@@ -226,7 +226,7 @@ Two fixture contracts are deployed on testnet and ready to point at:
 
 ## Contributing
 
-Deferred work is tracked as [open issues](https://github.com/adewuyito/sorobscope/issues),
+Deferred work is tracked as [open issues](https://github.com/Sorobscope/sorobscope/issues),
 including several tagged `good first issue`. The larger ones — a schema-aware key builder
 for composite keys, and reaching history beyond the RPC's retention window — are described
 with enough context to pick up cold.
